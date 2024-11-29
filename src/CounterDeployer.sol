@@ -17,11 +17,11 @@ contract CounterDeployer is AppDeployerBase {
 
     function deployContracts(
         uint32 chainSlug
-    ) external queueAndDeploy(chainSlug) {
-        _deploy(counter);
+    ) external async(abi.encode(chainSlug)) {
+        _deploy(counter, chainSlug);
     }
 
-    function initialize(uint32 chainSlug) public override queueAndExecute {
+    function initialize(uint32 chainSlug) public override async(abi.encode(chainSlug)) {
         address socket = getSocketAddress(chainSlug);
         address counterForwarder = forwarderAddresses[counter][chainSlug];
         Counter(counterForwarder).setSocket(socket);

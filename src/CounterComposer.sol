@@ -13,7 +13,7 @@ contract CounterComposer is AppGatewayBase {
         addressResolver.setContractsToGateways(deployerContract_);
     }
 
-    function incrementCounter(address _instance) public queueAndExecute {
+    function incrementCounter(address _instance) public async(abi.encode(_instance)) {
         Counter(_instance).increase();
     }
 }
