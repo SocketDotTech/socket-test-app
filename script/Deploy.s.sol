@@ -14,7 +14,7 @@ contract CounterDeploy is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        address addressResolver = 0x0; // TODO: ADD correct AddressResolver on Socket Composer Testnet
+        address addressResolver = 0x9433644DEa540F91faC99EC6FAC9d7579f925624; // TODO: ADD correct AddressResolver on Socket Composer Testnet
         // Setting fee payment on Arbitrum Sepolia
         FeesData memory feesData = FeesData({
             feePoolChain: 421614,
