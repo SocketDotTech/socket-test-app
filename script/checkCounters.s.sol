@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/Console.sol";
 import {CounterDeployer} from "../src/CounterDeployer.sol";
-import {CounterAppGateway} from "../src/CounterAppGateway.sol";
+import {Counter} from "../src/Counter.sol";
 
 contract CheckCounters is Script {
     // bytes32 public counter = keccak256(abi.encode("counter"));
