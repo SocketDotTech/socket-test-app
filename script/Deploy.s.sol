@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/Console.sol";
-import {CounterComposer} from "../src/CounterComposer.sol";
+import {CounterAppGateway} from "../src/CounterAppGateway.sol";
 import {CounterDeployer} from "../src/CounterDeployer.sol";
 import {Counter} from "../src/Counter.sol";
 import {FeesData} from "lib/socket-poc/contracts/common/Structs.sol";
@@ -14,30 +14,26 @@ contract CounterDeploy is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        address addressResolver = 0x9433644DEa540F91faC99EC6FAC9d7579f925624; // TODO: ADD correct AddressResolver on Socket Composer Testnet
+        address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
         // Setting fee payment on Arbitrum Sepolia
-        FeesData memory feesData = FeesData({
-            feePoolChain: 421614,
-            feePoolToken: ETH_ADDRESS,
-            maxFees: 0.01 ether
-        });
+        // FeesData memory feesData = FeesData({
+        //     feePoolChain: 421614,
+        //     feePoolToken: ETH_ADDRESS,
+        //     maxFees: 0.01 ether
+        // });
 
         CounterDeployer deployer = new CounterDeployer(
-            addressResolver,
-            feesData
+            addressResolver
         );
 
-        CounterComposer gateway = new CounterComposer(
+        CounterAppGateway gateway = new CounterAppGateway(
             addressResolver,
-            address(deployer),
-            feesData
+            address(deployer)
         );
 
-        address counterPlug = deployer.counter();
         console.log("Contracts deployed:");
-        console.log("CounterComposer:", address(gateway));
+        console.log("CounterAppGateway:", address(gateway));
         console.log("Counter Deployer:", address(deployer));
-        console.log("Counter:", address(counterPlug));
 
         console.log("Deploying contracts on Arbitrum Sepolia...");
         deployer.deployContracts(421614);

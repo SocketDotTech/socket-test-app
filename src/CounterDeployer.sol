@@ -8,20 +8,19 @@ contract CounterDeployer is AppDeployerBase {
     address public counter;
 
     constructor(
-        address addressResolver_,
-        FeesData memory feesData_
-    ) AppDeployerBase(addressResolver_, feesData_) Ownable(msg.sender) {
+        address addressResolver_
+    ) AppDeployerBase(addressResolver_) {
         counter = address(new Counter());
         creationCodeWithArgs[counter] = type(Counter).creationCode;
     }
 
     function deployContracts(
         uint32 chainSlug
-    ) external async(abi.encode(chainSlug)) {
+    ) external async {
         _deploy(counter, chainSlug);
     }
 
-    function initialize(uint32 chainSlug) public override async(abi.encode(chainSlug)) {
+    function initialize(uint32 chainSlug) public override async {
         address socket = getSocketAddress(chainSlug);
         address counterForwarder = forwarderAddresses[counter][chainSlug];
         Counter(counterForwarder).setSocket(socket);
