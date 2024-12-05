@@ -24,4 +24,8 @@ contract CounterDeployer is AppDeployerBase {
         address counterForwarder = forwarderAddresses[counter][chainSlug];
         Counter(counterForwarder).setSocket(socket);
     }
+
+    function setFees(FeesData memory feesData_) public {
+        feesData = feesData_;
+    }
 }

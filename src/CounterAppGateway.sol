@@ -21,4 +21,8 @@ contract CounterAppGateway is AppGatewayBase {
             Counter(instances[i]).increase();
         }
     }
+
+    function setFees(FeesData memory feesData_) public {
+        feesData = feesData_;
+    }
 }
