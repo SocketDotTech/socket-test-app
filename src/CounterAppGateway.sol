@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "socket-poc/contracts/base/AppGatewayBase.sol";
 import "./Counter.sol";
 
-contract CounterComposer is AppGatewayBase {
+contract CounterAppGateway is AppGatewayBase {
     constructor(
         address _addressResolver,
         address deployerContract_,
