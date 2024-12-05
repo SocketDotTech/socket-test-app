@@ -37,11 +37,39 @@ contract IncrementCounters is Script {
             11155111
         );
 
-        address[] memory instances = new address[](4);
-        instances[0] = counterForwarderArbitrumSepolia;
-        instances[1] = counterForwarderOptimismSepolia;
-        instances[2] = counterForwarderBaseSepolia;
-        instances[3] = counterForwarderSepolia;
+        // Count non-zero addresses
+        uint256 nonZeroCount = 0;
+        if (counterForwarderArbitrumSepolia != address(0)) nonZeroCount++;
+        if (counterForwarderOptimismSepolia != address(0)) nonZeroCount++;
+        if (counterForwarderBaseSepolia != address(0)) nonZeroCount++;
+        if (counterForwarderSepolia != address(0)) nonZeroCount++;
+
+        address[] memory instances = new address[](nonZeroCount);
+        uint256 index = 0;
+        if (counterForwarderArbitrumSepolia != address(0)) {
+            instances[index] = counterForwarderArbitrumSepolia;
+            index++;
+        } else {
+            console.log("Arbitrum Sepolia forwarder not yet deployed");
+        }
+        if (counterForwarderOptimismSepolia != address(0)) {
+            instances[index] = counterForwarderOptimismSepolia;
+            index++;
+        } else {
+            console.log("Optimism Sepolia forwarder not yet deployed");
+        }
+        if (counterForwarderBaseSepolia != address(0)) {
+            instances[index] = counterForwarderBaseSepolia;
+            index++;
+        } else {
+            console.log("Base Sepolia forwarder not yet deployed");
+        }
+        if (counterForwarderSepolia != address(0)) {
+            instances[index] = counterForwarderSepolia;
+            index++;
+        } else {
+            console.log("Sepolia forwarder not yet deployed");
+        }
 
         vm.startBroadcast(deployerPrivateKey);
         gateway.incrementCounters(instances);

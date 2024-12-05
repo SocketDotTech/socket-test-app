@@ -10,29 +10,74 @@ contract CheckCounters is Script {
     // bytes32 public counter = keccak256(abi.encode("counter"));
 
     function run() external {
-
-        CounterDeployer deployer = CounterDeployer(vm.envAddress("COUNTER_DEPLOYER"));
+        CounterDeployer deployer = CounterDeployer(
+            vm.envAddress("COUNTER_DEPLOYER")
+        );
 
         vm.createSelectFork(vm.envString("SOCKET_RPC"));
-        address counterInstanceArbitrumSepolia = deployer.getOnChainAddress(deployer.counter(), 421614);
-        address counterInstanceOptimismSepolia = deployer.getOnChainAddress(deployer.counter(), 11155420);
-        address counterInstanceBaseSepolia = deployer.getOnChainAddress(deployer.counter(), 84532);
-        address counterInstanceSepolia = deployer.getOnChainAddress(deployer.counter(), 11155111);
+        address counterInstanceArbitrumSepolia = deployer.getOnChainAddress(
+            deployer.counter(),
+            421614
+        );
+        address counterInstanceOptimismSepolia = deployer.getOnChainAddress(
+            deployer.counter(),
+            11155420
+        );
+        address counterInstanceBaseSepolia = deployer.getOnChainAddress(
+            deployer.counter(),
+            84532
+        );
+        address counterInstanceSepolia = deployer.getOnChainAddress(
+            deployer.counter(),
+            11155111
+        );
 
-        vm.createSelectFork(vm.envString("ARBITRUM_SEPOLIA_RPC"));
-        uint256 counterValueArbitrumSepolia = Counter(counterInstanceArbitrumSepolia).counter();
-        console.log("Counter value on Arbitrum Sepolia: ", counterValueArbitrumSepolia);
+        if (counterInstanceArbitrumSepolia != address(0)) {
+            vm.createSelectFork(vm.envString("ARBITRUM_SEPOLIA_RPC"));
+            uint256 counterValueArbitrumSepolia = Counter(
+                counterInstanceArbitrumSepolia
+            ).counter();
+            console.log(
+                "Counter value on Arbitrum Sepolia: ",
+                counterValueArbitrumSepolia
+            );
+        } else {
+            console.log("Counter not yet deployed on Arbitrum Sepolia");
+        }
 
-        vm.createSelectFork(vm.envString("OPTIMISM_SEPOLIA_RPC"));
-        uint256 counterValueOptimismSepolia = Counter(counterInstanceOptimismSepolia).counter();
-        console.log("Counter value on Optimism Sepolia: ", counterValueOptimismSepolia);
+        if (counterInstanceOptimismSepolia != address(0)) {
+            vm.createSelectFork(vm.envString("OPTIMISM_SEPOLIA_RPC"));
+            uint256 counterValueOptimismSepolia = Counter(
+                counterInstanceOptimismSepolia
+            ).counter();
+            console.log(
+                "Counter value on Optimism Sepolia: ",
+                counterValueOptimismSepolia
+            );
+        } else {
+            console.log("Counter not yet deployed on Optimism Sepolia");
+        }
 
-        vm.createSelectFork(vm.envString("BASE_SEPOLIA_RPC"));
-        uint256 counterValueBaseSepolia = Counter(counterInstanceBaseSepolia).counter();
-        console.log("Counter value on Base Sepolia: ", counterValueBaseSepolia);
+        if (counterInstanceBaseSepolia != address(0)) {
+            vm.createSelectFork(vm.envString("BASE_SEPOLIA_RPC"));
+            uint256 counterValueBaseSepolia = Counter(
+                counterInstanceBaseSepolia
+            ).counter();
+            console.log(
+                "Counter value on Base Sepolia: ",
+                counterValueBaseSepolia
+            );
+        } else {
+            console.log("Counter not yet deployed on Base Sepolia");
+        }
 
-        vm.createSelectFork(vm.envString("SEPOLIA_RPC"));
-        uint256 counterValueSepolia = Counter(counterInstanceSepolia).counter();
-        console.log("Counter value on Sepolia: ", counterValueSepolia);
+        if (counterInstanceSepolia != address(0)) {
+            vm.createSelectFork(vm.envString("SEPOLIA_RPC"));
+            uint256 counterValueSepolia = Counter(counterInstanceSepolia)
+                .counter();
+            console.log("Counter value on Sepolia: ", counterValueSepolia);
+        } else {
+            console.log("Counter not yet deployed on Sepolia");
+        }
     }
 }
