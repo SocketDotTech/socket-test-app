@@ -5,18 +5,17 @@ import "./Counter.sol";
 import "socket-poc/contracts/base/AppDeployerBase.sol";
 
 contract CounterDeployer is AppDeployerBase {
-    address public counter;
+    bytes32 public counter = _createContractId("counter");
 
     constructor(
-        address addressResolver_
+        address addressResolver_,
+        FeesData memory feesData_
     ) AppDeployerBase(addressResolver_) {
-        counter = address(new Counter());
         creationCodeWithArgs[counter] = type(Counter).creationCode;
+        _setFeesData(feesData_);
     }
 
-    function deployContracts(
-        uint32 chainSlug
-    ) external async {
+    function deployContracts(uint32 chainSlug) external async {
         _deploy(counter, chainSlug);
     }
 

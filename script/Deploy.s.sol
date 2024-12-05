@@ -11,24 +11,30 @@ import {ETH_ADDRESS} from "lib/socket-poc/contracts/common/Constants.sol";
 
 contract CounterDeploy is Script {
     function run() external {
+        address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
+
+        string memory rpc = vm.envString("SOCKET_RPC");
+        vm.createSelectFork(rpc);
+
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
-        // Setting fee payment on Arbitrum Sepolia
-        // FeesData memory feesData = FeesData({
-        //     feePoolChain: 421614,
-        //     feePoolToken: ETH_ADDRESS,
-        //     maxFees: 0.01 ether
-        // });
+        // Setting fee payment on Ethereum Sepolia
+        FeesData memory feesData = FeesData({
+            feePoolChain: 11155111,
+            feePoolToken: ETH_ADDRESS,
+            maxFees: 0.01 ether
+        });
 
         CounterDeployer deployer = new CounterDeployer(
-            addressResolver
+            addressResolver,
+            feesData
         );
 
         CounterAppGateway gateway = new CounterAppGateway(
             addressResolver,
-            address(deployer)
+            address(deployer),
+            feesData
         );
 
         console.log("Contracts deployed:");
@@ -39,5 +45,9 @@ contract CounterDeploy is Script {
         deployer.deployContracts(421614);
         console.log("Deploying contracts on Optimism Sepolia...");
         deployer.deployContracts(11155420);
+        console.log("Deploying contracts on Ethereum Sepolia...");
+        deployer.deployContracts(11155111);
+        console.log("Deploying contracts on Base Sepolia...");
+        deployer.deployContracts(84532);
     }
 }
