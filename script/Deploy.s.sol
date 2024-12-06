@@ -18,9 +18,9 @@ contract CounterDeploy is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        // Setting fee payment on Ethereum Sepolia
+        // Setting fee payment on Arbitrum Sepolia
         FeesData memory feesData = FeesData({
-            feePoolChain: 11155111,
+            feePoolChain: 421614,
             feePoolToken: ETH_ADDRESS,
             maxFees: 0.01 ether
         });
