@@ -25,8 +25,6 @@ contract CounterDeployOnchain is Script {
         deployer.deployContracts(421614);
         console.log("Deploying contracts on Optimism Sepolia...");
         deployer.deployContracts(11155420);
-        console.log("Deploying contracts on Ethereum Sepolia...");
-        deployer.deployContracts(11155111);
         console.log("Deploying contracts on Base Sepolia...");
         deployer.deployContracts(84532);
     }
