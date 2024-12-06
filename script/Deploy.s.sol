@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
-import {console} from "forge-std/Console.sol";
+import {console} from "forge-std/console.sol";
 import {CounterAppGateway} from "../src/CounterAppGateway.sol";
 import {CounterDeployer} from "../src/CounterDeployer.sol";
 import {FeesData} from "lib/socket-protocol/contracts/common/Structs.sol";
