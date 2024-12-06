@@ -5,7 +5,6 @@ import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/Console.sol";
 import {CounterAppGateway} from "../src/CounterAppGateway.sol";
 import {CounterDeployer} from "../src/CounterDeployer.sol";
-import {Counter} from "../src/Counter.sol";
 import {FeesData} from "lib/socket-poc/contracts/common/Structs.sol";
 import {ETH_ADDRESS} from "lib/socket-poc/contracts/common/Constants.sol";
 
@@ -40,14 +39,5 @@ contract CounterDeploy is Script {
         console.log("Contracts deployed:");
         console.log("CounterAppGateway:", address(gateway));
         console.log("Counter Deployer:", address(deployer));
-
-        console.log("Deploying contracts on Arbitrum Sepolia...");
-        deployer.deployContracts(421614);
-        console.log("Deploying contracts on Optimism Sepolia...");
-        deployer.deployContracts(11155420);
-        console.log("Deploying contracts on Ethereum Sepolia...");
-        deployer.deployContracts(11155111);
-        console.log("Deploying contracts on Base Sepolia...");
-        deployer.deployContracts(84532);
     }
 }
