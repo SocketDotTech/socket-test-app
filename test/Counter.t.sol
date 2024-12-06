@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "socket-poc/test/AuctionHouse.sol";
+import "socket-protocol/test/AuctionHouse.sol";
 import {Counter} from "../src/Counter.sol";
 import {CounterAppGateway} from "../src/CounterAppGateway.sol";
 import {CounterDeployer} from "../src/CounterDeployer.sol";
