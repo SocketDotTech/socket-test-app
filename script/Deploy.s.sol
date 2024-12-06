@@ -37,7 +37,7 @@ contract CounterDeploy is Script {
         );
 
         console.log("Contracts deployed:");
+        console.log("CounterDeployer:", address(deployer));
         console.log("CounterAppGateway:", address(gateway));
-        console.log("Counter Deployer:", address(deployer));
     }
 }
