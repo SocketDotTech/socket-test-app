@@ -27,6 +27,10 @@ contract CheckCounters is Script {
             deployer.counter(),
             84532
         );
+        address counterInstanceSepolia = deployer.getOnChainAddress(
+            deployer.counter(),
+            11155111
+        );
 
         if (counterInstanceArbitrumSepolia != address(0)) {
             vm.createSelectFork(vm.envString("ARBITRUM_SEPOLIA_RPC"));
@@ -65,6 +69,19 @@ contract CheckCounters is Script {
             );
         } else {
             console.log("Counter not yet deployed on Base Sepolia");
+        }
+
+        if (counterInstanceSepolia != address(0)) {
+            vm.createSelectFork(vm.envString("OPTIMISM_SEPOLIA_RPC"));
+            uint256 counterValueOptimismSepolia = Counter(
+                counterInstanceOptimismSepolia
+            ).counter();
+            console.log(
+                "Counter value on Optimism Sepolia: ",
+                counterValueOptimismSepolia
+            );
+        } else {
+            console.log("Counter not yet deployed on Optimism Sepolia");
         }
     }
 }
