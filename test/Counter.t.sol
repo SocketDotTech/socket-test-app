@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "socket-protocol/test/AuctionHouse.sol";
-import {Counter} from "../src/Counter.sol";
-import {CounterAppGateway} from "../src/CounterAppGateway.sol";
-import {CounterDeployer} from "../src/CounterDeployer.sol";
+import {Counter} from "../src/counter/Counter.sol";
+import {CounterAppGateway} from "../src/counter/CounterAppGateway.sol";
+import {CounterDeployer} from "../src/counter/CounterDeployer.sol";
 
 contract CounterTest is AuctionHouseTest {
     CounterDeployer public counterDeployer;
