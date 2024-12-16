@@ -53,7 +53,6 @@ const fetchTransactionStatus = async (hash) => {
 // Function to check transaction status
 const checkTransactionStatus = async () => {
   let allCompleted = true;
-
   for (let i = 0; i < statusTracker.length; i++) {
     const tx = statusTracker[i];
 
@@ -76,23 +75,29 @@ const checkTransactionStatus = async () => {
 
       const transactionResponse = data.response[0]; // First response object
       const status = transactionResponse.status || 'UNKNOWN';
-      const payload = transactionResponse.payloads?.[0];
-      const chainSlug = payload?.chainSlug || 'N/A';
+      const payloads = transactionResponse.payloads || [];
 
       // Update tracker
       tx.status = status;
 
       if (status === 'COMPLETED' && !tx.printed) {
-        const deployerDetails = payload?.deployerDetails || {};
+        const deployerDetails = payloads[0].deployerDetails || {};
 
         if (Object.keys(deployerDetails).length !== 0) {
-          console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: ${chainSlug}`);
-          const onChainAddress = deployerDetails.onChainAddress;
-          const forwarderAddress = deployerDetails.forwarderAddress;
-          console.log(`OnChainAddress: ${onChainAddress}`);
-          console.log(`ForwarderAddress: ${forwarderAddress}`);
+          console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: ${payloads[0].chainSlug || 'N/A'}`);
+          console.log(`OnChainAddress: ${deployerDetails.onChainAddress}`);
+          console.log(`ForwarderAddress: ${deployerDetails.forwarderAddress}`);
         } else {
           console.log(`Hash: ${tx.hash}, Status: ${status}`);
+        }
+
+        // Handle multiple payloads
+        if (payloads.length > 1) {
+          payloads.forEach(payload => {
+            if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' && payload.executeDetails.executeTxHash) {
+              console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug || 'N/A'}`);
+            }
+          });
         }
 
         // Mark this transaction as printed
