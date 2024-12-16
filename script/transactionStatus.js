@@ -55,6 +55,23 @@ const fetchTransactionStatus = async (hash) => {
   }
 };
 
+const processMultiplePayloads = (payloads, tx) => {
+  if (payloads.length > 1) {
+    payloads.forEach(payload => {
+      // Create a unique key for the payload to track printed status
+      const payloadKey = `${payload.executeDetails.executeTxHash}-${payload.callBackDetails.callbackStatus}`;
+
+      if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' &&
+        payload.executeDetails.executeTxHash &&
+        !tx.printedPayloads.has(payloadKey)) {
+        console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug}`);
+
+        tx.printedPayloads.add(payloadKey);
+      }
+    });
+  }
+};
+
 // Function to check transaction status
 const checkTransactionStatus = async () => {
   let allCompleted = true;
@@ -84,23 +101,8 @@ const checkTransactionStatus = async () => {
 
       // Update tracker
       tx.status = status;
-
       if (status === 'COMPLETED' && !tx.printed) {
-        if (payloads.length > 1) {
-          payloads.forEach(payload => {
-            // Create a unique key for the payload to track printed status
-            const payloadKey = `${payload.executeDetails.executeTxHash}-${payload.callBackDetails.callbackStatus}`;
-
-            if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' &&
-              payload.executeDetails.executeTxHash &&
-              !tx.printedPayloads.has(payloadKey)) {
-              console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug}`);
-
-              // Mark this payload as printed
-              tx.printedPayloads.add(payloadKey);
-            }
-          });
-        }
+        processMultiplePayloads(payloads, tx);
 
         const deployerDetails = payloads[0].deployerDetails || {};
 
@@ -112,25 +114,10 @@ const checkTransactionStatus = async () => {
           console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: 7625382`);
         }
 
-        // Mark this transaction as printed
         tx.printed = true;
-      } else if (status === 'IN_PROGRESS') {
-        // Handle multiple payloads
-        if (payloads.length > 1) {
-          payloads.forEach(payload => {
-            // Create a unique key for the payload to track printed status
-            const payloadKey = `${payload.executeDetails.executeTxHash}-${payload.callBackDetails.callbackStatus}`;
-
-            if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' &&
-              payload.executeDetails.executeTxHash &&
-              !tx.printedPayloads.has(payloadKey)) {
-              console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug || 'N/A'}`);
-
-              // Mark this payload as printed
-              tx.printedPayloads.add(payloadKey);
-            }
-          });
-        }
+      }
+      else if (status === 'IN_PROGRESS') {
+        processMultiplePayloads(payloads, tx);
       }
     } else {
       console.error(`Invalid or empty response for hash: ${tx.hash}`);
