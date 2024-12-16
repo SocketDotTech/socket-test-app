@@ -114,4 +114,4 @@ const checkTransactionStatus = async () => {
 
 // Start periodic polling every second
 console.log('Starting to monitor transaction statuses...');
-intervalId = setInterval(checkTransactionStatus, 1000);
+intervalId = setInterval(checkTransactionStatus, 2000);
