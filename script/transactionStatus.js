@@ -34,7 +34,12 @@ const apiUrl = 'https://apiv2.dev.socket.tech/getDetailsByTxHash?txHash=';
 let intervalId;
 
 // Track statuses for each hash
-let statusTracker = transactions.map(hash => ({ hash, status: 'PENDING', printed: false }));
+let statusTracker = transactions.map(hash => ({
+  hash,
+  status: 'PENDING',
+  printed: false,
+  printedPayloads: new Set()
+}));
 let allDonePrinted = false; // Prevent multiple prints of the final message
 
 // Function to perform API requests
@@ -81,27 +86,51 @@ const checkTransactionStatus = async () => {
       tx.status = status;
 
       if (status === 'COMPLETED' && !tx.printed) {
-        const deployerDetails = payloads[0].deployerDetails || {};
-
-        if (Object.keys(deployerDetails).length !== 0) {
-          console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: ${payloads[0].chainSlug || 'N/A'}`);
-          console.log(`OnChainAddress: ${deployerDetails.onChainAddress}`);
-          console.log(`ForwarderAddress: ${deployerDetails.forwarderAddress}`);
-        } else {
-          console.log(`Hash: ${tx.hash}, Status: ${status}`);
-        }
-
-        // Handle multiple payloads
         if (payloads.length > 1) {
           payloads.forEach(payload => {
-            if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' && payload.executeDetails.executeTxHash) {
-              console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug || 'N/A'}`);
+            // Create a unique key for the payload to track printed status
+            const payloadKey = `${payload.executeDetails.executeTxHash}-${payload.callBackDetails.callbackStatus}`;
+
+            if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' &&
+              payload.executeDetails.executeTxHash &&
+              !tx.printedPayloads.has(payloadKey)) {
+              console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug}`);
+
+              // Mark this payload as printed
+              tx.printedPayloads.add(payloadKey);
             }
           });
         }
 
+        const deployerDetails = payloads[0].deployerDetails || {};
+
+        if (Object.keys(deployerDetails).length !== 0) {
+          console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: ${payloads[0].chainSlug}`);
+          console.log(`OnChainAddress: ${deployerDetails.onChainAddress}`);
+          console.log(`ForwarderAddress: ${deployerDetails.forwarderAddress}`);
+        } else {
+          console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: 7625382`);
+        }
+
         // Mark this transaction as printed
         tx.printed = true;
+      } else if (status === 'IN_PROGRESS') {
+        // Handle multiple payloads
+        if (payloads.length > 1) {
+          payloads.forEach(payload => {
+            // Create a unique key for the payload to track printed status
+            const payloadKey = `${payload.executeDetails.executeTxHash}-${payload.callBackDetails.callbackStatus}`;
+
+            if (payload.callBackDetails.callbackStatus === 'PROMISE_RESOLVED' &&
+              payload.executeDetails.executeTxHash &&
+              !tx.printedPayloads.has(payloadKey)) {
+              console.log(`Hash: ${payload.executeDetails.executeTxHash}, Status: ${payload.callBackDetails.callbackStatus}, ChainId: ${payload.chainSlug || 'N/A'}`);
+
+              // Mark this payload as printed
+              tx.printedPayloads.add(payloadKey);
+            }
+          });
+        }
       }
     } else {
       console.error(`Invalid or empty response for hash: ${tx.hash}`);
