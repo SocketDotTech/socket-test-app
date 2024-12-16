@@ -84,13 +84,15 @@ const checkTransactionStatus = async () => {
 
       if (status === 'COMPLETED' && !tx.printed) {
         const deployerDetails = payload?.deployerDetails || {};
-        console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: ${chainSlug}`);
 
         if (Object.keys(deployerDetails).length !== 0) {
+          console.log(`Hash: ${tx.hash}, Status: ${status}, ChainId: ${chainSlug}`);
           const onChainAddress = deployerDetails.onChainAddress;
           const forwarderAddress = deployerDetails.forwarderAddress;
           console.log(`OnChainAddress: ${onChainAddress}`);
           console.log(`ForwarderAddress: ${forwarderAddress}`);
+        } else {
+          console.log(`Hash: ${tx.hash}, Status: ${status}`);
         }
 
         // Mark this transaction as printed
