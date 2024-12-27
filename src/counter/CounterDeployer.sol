@@ -7,10 +7,7 @@ import "socket-protocol/contracts/base/AppDeployerBase.sol";
 contract CounterDeployer is AppDeployerBase {
     bytes32 public counter = _createContractId("counter");
 
-    constructor(
-        address addressResolver_,
-        FeesData memory feesData_
-    ) AppDeployerBase(addressResolver_) {
+    constructor(address addressResolver_, FeesData memory feesData_) AppDeployerBase(addressResolver_) {
         creationCodeWithArgs[counter] = type(Counter).creationCode;
         _setFeesData(feesData_);
     }

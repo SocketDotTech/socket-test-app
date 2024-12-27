@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {CounterAppGateway} from "../src/CounterAppGateway.sol";
-import {CounterDeployer} from "../src/CounterDeployer.sol";
+import {CounterAppGateway} from "../../src/counter/CounterAppGateway.sol";
+import {CounterDeployer} from "../../src/counter/CounterDeployer.sol";
 import {FeesData} from "lib/socket-protocol/contracts/common/Structs.sol";
 import {ETH_ADDRESS} from "lib/socket-protocol/contracts/common/Constants.sol";
 
@@ -19,22 +19,11 @@ contract CounterDeploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Setting fee payment on Arbitrum Sepolia
-        FeesData memory feesData = FeesData({
-            feePoolChain: 421614,
-            feePoolToken: ETH_ADDRESS,
-            maxFees: 0.01 ether
-        });
+        FeesData memory feesData = FeesData({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, maxFees: 0.01 ether});
 
-        CounterDeployer deployer = new CounterDeployer(
-            addressResolver,
-            feesData
-        );
+        CounterDeployer deployer = new CounterDeployer(addressResolver, feesData);
 
-        CounterAppGateway gateway = new CounterAppGateway(
-            addressResolver,
-            address(deployer),
-            feesData
-        );
+        CounterAppGateway gateway = new CounterAppGateway(addressResolver, address(deployer), feesData);
 
         console.log("Contracts deployed:");
         console.log("CounterDeployer:", address(deployer));
