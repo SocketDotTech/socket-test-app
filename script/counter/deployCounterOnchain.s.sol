@@ -3,12 +3,12 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {CounterDeployer} from "../../src/counter/CounterDeployer.sol";
-import {ETH_ADDRESS} from "lib/socket-protocol/contracts/common/Constants.sol";
+import {CounterDeployer} from "socket-protocol/contracts/apps//counter/CounterDeployer.sol";
+import {ETH_ADDRESS} from "socket-protocol/contracts/common/Constants.sol";
 
 contract CounterDeployOnchain is Script {
     function run() external {
-        string memory rpc = vm.envString("SOCKET_RPC");
+        string memory rpc = vm.envString("OFF_CHAIN_VM_RPC");
         console.log(rpc);
         vm.createSelectFork(rpc);
 
@@ -23,8 +23,8 @@ contract CounterDeployOnchain is Script {
         deployer.deployContracts(421614);
         console.log("Deploying contracts on Optimism Sepolia...");
         deployer.deployContracts(11155420);
-        console.log("Deploying contracts on Base Sepolia...");
-        deployer.deployContracts(84532);
+        // console.log("Deploying contracts on Base Sepolia...");
+        // deployer.deployContracts(84532);
         //console.log("Deploying contracts on Ethereum Sepolia...");
         //deployer.deployContracts(11155111);
     }
