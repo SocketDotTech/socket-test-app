@@ -3,8 +3,9 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/PlugBase.sol";
 
-contract Counter is PlugBase {
-    uint256 public counter;
+contract DeployCounter is PlugBase {
+    bool initDataPassed;
+    bool isInitialized;
 
     function increase() external onlySocket {
         counter++;
@@ -14,7 +15,9 @@ contract Counter is PlugBase {
         address appGateway_,
         address socket_,
         address switchboard_
-    ) external {
+    ) external onlySocket {
         _connectSocket(appGateway_, socket_, switchboard_);
     }
+
+    
 }
