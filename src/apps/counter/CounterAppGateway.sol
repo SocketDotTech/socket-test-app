@@ -5,11 +5,11 @@ import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./Counter.sol";
 
 contract CounterAppGateway is AppGatewayBase {
-    constructor(address addressResolver_, address deployerContract_, address auctionManager_, FeesData memory feesData_)
+    constructor(address addressResolver_, address deployerContract_, address auctionManager_, Fees memory fees_)
         AppGatewayBase(addressResolver_, auctionManager_)
     {
         addressResolver__.setContractsToGateways(deployerContract_);
-        _setFeesData(feesData_);
+        _setOverrides(fees_);
     }
 
     function incrementCounters(address[] memory instances_) public async {
@@ -20,8 +20,8 @@ contract CounterAppGateway is AppGatewayBase {
         }
     }
 
-    function setFees(FeesData memory feesData_) public {
-        feesData = feesData_;
+    function setFees(Fees memory fees_) public {
+        fees = fees_;
     }
 
     function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
