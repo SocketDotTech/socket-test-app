@@ -2,7 +2,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "./Counter.sol";
+import "./Counters.sol";
 
 contract CounterAppGateway is AppGatewayBase {
     constructor(address addressResolver_, address deployerContract_, address auctionManager_, Fees memory fees_)
@@ -16,7 +16,7 @@ contract CounterAppGateway is AppGatewayBase {
         // the increase function is called on given list of instances
         // this
         for (uint256 i = 0; i < instances_.length; i++) {
-            Counter(instances_[i]).increase();
+            PlugInitCounter(instances_[i]).increase();
         }
     }
 
