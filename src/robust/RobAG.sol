@@ -3,16 +3,14 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 // import "socket-protocol/contracts/protocol/utils/common/Structs.sol";
-import "./RobPlug.sol";
+import "./IRobPlug.sol";
 
 contract RobAG is AppGatewayBase {
 
     uint256[] public values;
-    uint256[] public resolveTimes;
+    uint256[] public resolveTimes = new uint256[](10);
 
-    uint256[] public timeouts = [1, 10, 20, 30, 40, 50, 100, 500, 1000, 10000];
-
-
+    uint256[] public timeoutDurations = [1, 10, 20, 30, 40, 50, 100, 500, 1000, 10000];
 
     constructor(address addressResolver_, address deployerContract_, address auctionManager_, Fees memory fees_)
         AppGatewayBase(addressResolver_, auctionManager_)
@@ -24,29 +22,29 @@ contract RobAG is AppGatewayBase {
     function triggerSequentialWrite(address instance_) public async {
         _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 10; i++) {
-            RobPlug(instance_).increase();
+            IRobPlug(instance_).increase();
         }
     }
 
     function triggerParallelWrite(address instance_) public async {
         _setOverrides(Read.OFF, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            RobPlug(instance_).increase();
+            IRobPlug(instance_).increase();
         }
     }
 
     function triggerAltWrite(address instance1_, address instance2_) public async {
         _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 5; i++) {
-            RobPlug(instance1_).increase();
-            RobPlug(instance2_).increase();
+            IRobPlug(instance1_).increase();
+            IRobPlug(instance2_).increase();
         }
     }
 
     function triggerRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            RobPlug(instance_).getValue(i);
+            IRobPlug(instance_).getValue(i);
             IPromise(instance_).then(this.setValue.selector, abi.encode(i));
         }
     }
@@ -55,10 +53,10 @@ contract RobAG is AppGatewayBase {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             if (i % 2 == 0) {
-                RobPlug(instance1_).getValue(i);
+                IRobPlug(instance1_).getValue(i);
                 IPromise(instance1_).then(this.setValue.selector, abi.encode(i));
             } else {
-                RobPlug(instance2_).getValue(i);
+                IRobPlug(instance2_).getValue(i);
                 IPromise(instance2_).then(this.setValue.selector, abi.encode(i));
             }
         }
@@ -66,107 +64,37 @@ contract RobAG is AppGatewayBase {
 
     function triggerReadAndWrite(address instance_) public async {
         _setOverrides(Read.ON, Parallel.OFF);
-        RobPlug(instance_).getValue(0);
+        IRobPlug(instance_).getValue(0);
         IPromise(instance_).then(this.setValue.selector, abi.encode(0));
-        RobPlug(instance_).getValue(1);
+        IRobPlug(instance_).getValue(1);
         IPromise(instance_).then(this.setValue.selector, abi.encode(1));
 
         _setOverrides(Read.OFF);
-        RobPlug(instance_).increase();
-        RobPlug(instance_).increase();
+        IRobPlug(instance_).increase();
+        IRobPlug(instance_).increase();
 
         _setOverrides(Read.ON);
-        RobPlug(instance_).getValue(2);
+        IRobPlug(instance_).getValue(2);
         IPromise(instance_).then(this.setValue.selector, abi.encode(2));
-        RobPlug(instance_).getValue(3);
+        IRobPlug(instance_).getValue(3);
         IPromise(instance_).then(this.setValue.selector, abi.encode(3));
 
         _setOverrides(Read.OFF);
-        RobPlug(instance_).increase();
-        RobPlug(instance_).increase();
+        IRobPlug(instance_).increase();
+        IRobPlug(instance_).increase();
     }
 
     function triggerTimeouts() public {
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                0
-            ),
-            1
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                1
-            ),
-            10
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                2
-            ),
-            20
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                3
-            ),
-            30
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                4
-            ),
-            40
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                5
-            ),
-            50
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                6
-            ),
-            100
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                7
-            ),
-            500
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                8
-            ),
-            1000
-        );
-        watcherPrecompile__().setTimeout(
-            address(this),
-            abi.encodeWithSelector(
-                this.resolveTimeout.selector,
-                9
-            ),
-            10000
-        );
+        for (uint256 i = 0; i < timeoutDurations.length; i++) {
+            watcherPrecompile__().setTimeout(
+                address(this),
+                abi.encodeWithSelector(
+                    this.resolveTimeout.selector,
+                    i
+                ),
+                timeoutDurations[i]
+            );
+        }
     }
 
     function resolveTimeout(uint256 index_) public {

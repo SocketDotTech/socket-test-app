@@ -13,6 +13,7 @@ contract RobPlug is PlugBase {
     }
 
     function setValues(uint256[] memory values_) external {
+        values = new uint256[](10);
         values[0] = values_[0];
         values[1] = values_[1];
         values[2] = values_[2];
