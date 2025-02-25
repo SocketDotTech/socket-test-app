@@ -3,12 +3,9 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {RobDep} from "../../src/robust/RobDep.sol";
-import {RobAG} from "../../src/robust/RobAG.sol";
-import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
-import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
+import {RobDeployer} from "../../src/apps/robust/RobDeployer.sol";
 
-contract CounterDeploy is Script {
+contract DeployOnchainContracts is Script {
     function run() external {
         string memory rpc = vm.envString("EVMX_RPC");
         vm.createSelectFork(rpc);
@@ -16,9 +13,7 @@ contract CounterDeploy is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        // Fees memory fees = Fees({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
-
-        RobDep deployer = RobDep(vm.envAddress("APP_DEPLOYER"));
+        RobDeployer deployer = RobDeployer(vm.envAddress("APP_DEPLOYER"));
         deployer.deployContracts(11155420);
         deployer.deployContracts(421614);
 

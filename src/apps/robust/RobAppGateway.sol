@@ -2,10 +2,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
-// import "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import "./IRobPlug.sol";
 
-contract RobAG is AppGatewayBase {
+contract RobAppGateway is AppGatewayBase {
 
     uint256[] public values;
     uint256[] public resolveTimes = new uint256[](10);
