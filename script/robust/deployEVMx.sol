@@ -25,7 +25,7 @@ contract DeployEVMxContracts is Script {
         RobAppGateway gateway = new RobAppGateway(addressResolver, address(deployer), auctionManager, fees);
 
         console.log("Contracts deployed:");
-        console.log("RobDep:", address(deployer));
-        console.log("RobAG:", address(gateway));
+        console.log("Deployer:", address(deployer));
+        console.log("AppGateway:", address(gateway));
     }
 }

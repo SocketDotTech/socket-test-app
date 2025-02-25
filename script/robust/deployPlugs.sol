@@ -13,7 +13,7 @@ contract DeployOnchainContracts is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        RobDeployer deployer = RobDeployer(vm.envAddress("APP_DEPLOYER"));
+        RobDeployer deployer = RobDeployer(vm.envAddress("DEPLOYER"));
         deployer.deployContracts(11155420);
         deployer.deployContracts(421614);
 
