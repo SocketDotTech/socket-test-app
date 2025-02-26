@@ -10,7 +10,7 @@ import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common
 import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/app-gateway/FeesManager.sol";
 
 import {InboxDeployer} from "../../src/inbox/InboxDeployer.sol";
-import {InboxAppGateway} from "../../src/inbox/InboxAppGateway.sol";
+import {InboxAppGateway, IInbox} from "../../src/inbox/InboxAppGateway.sol";
 
 contract RunEVMxRobustness is Script {
     // ----- ENVIRONMENT VARIABLES -----
@@ -111,8 +111,18 @@ contract RunEVMxRobustness is Script {
     }
 
     function inboxTransactions() internal {
+        address opSepInboxAddress = deployer.getOnChainAddress(deployer.inbox(), opSepChainId);
+        address arbSepInboxAddress = deployer.getOnChainAddress(deployer.inbox(), arbSepChainId);
+
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
+
+        IInbox(opSepInboxAddress).increaseOnGateway(5);
+        require(appGateway.valueOnGateway() != 5, "Expected the same value");
+        appGateway.updateOnchain(opSepChainId);
+        require(IInbox(opSepInboxAddress).value() != 5, "Expected the same value");
+        IInbox(opSepInboxAddress).propagateToAnother(arbSepChainId);
+        require(IInbox(arbSepInboxAddress).value() != 5, "Expected the same value");
 
         vm.stopBroadcast();
         console.log("All inbox transactions executed successfully");

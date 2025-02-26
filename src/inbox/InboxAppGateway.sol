@@ -12,11 +12,14 @@ interface IInboxDeployer {
 }
 
 interface IInbox {
+    function value() external returns (uint256);
+    function increaseOnGateway(uint256 value_) external returns (bytes32);
+    function propagateToAnother(uint32 targetChain) external returns (bytes32);
     function updateFromGateway(uint256 value) external;
 }
 
 contract InboxAppGateway is AppGatewayBase {
-    uint256 public value;
+    uint256 public valueOnGateway;
     address deployerAddress;
 
     // Message types
@@ -34,6 +37,11 @@ contract InboxAppGateway is AppGatewayBase {
         _setOverrides(fees_);
     }
 
+    function updateOnchain(uint32 targetChain) public {
+        address inboxForwarderAddress = IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+        IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
+    }
+
     function callFromInbox(
         uint32,
         address,
@@ -43,7 +51,7 @@ contract InboxAppGateway is AppGatewayBase {
         (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
         if (msgType == INCREASE_ON_GATEWAY) {
             uint256 valueOnchain = abi.decode(payload, (uint256));
-            value += valueOnchain;
+            valueOnGateway += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
             address inboxForwarderAddress = IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
