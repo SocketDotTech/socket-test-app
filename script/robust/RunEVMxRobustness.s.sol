@@ -3,13 +3,14 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {RobustnessDeployer} from "../../src/robustness/RobustnessDeployer.sol";
-import {RobustnessAppGateway} from "../../src/robustness/RobustnessAppGateway.sol";
 import {DepositFees} from "socket-protocol/script/PayFeesInArbitrumETH.s.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/FeesPlug.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
 import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/app-gateway/FeesManager.sol";
+
+import {RobustnessDeployer} from "../../src/robustness/RobustnessDeployer.sol";
+import {RobustnessAppGateway} from "../../src/robustness/RobustnessAppGateway.sol";
 
 contract RunEVMxRobustness is Script {
     // ----- ENVIRONMENT VARIABLES -----
