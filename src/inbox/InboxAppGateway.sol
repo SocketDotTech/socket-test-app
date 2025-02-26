@@ -47,7 +47,7 @@ contract InboxAppGateway is AppGatewayBase {
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
             address inboxForwarderAddress = IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
-            IInbox(inboxForwarderAddress).updateFromGateway(value);
+            IInbox(inboxForwarderAddress).updateFromGateway(valueOnchain);
         } else {
             revert("InboxGateway: invalid message type");
         }

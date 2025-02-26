@@ -13,7 +13,7 @@ contract Inbox is Ownable, PlugBase {
 
     function increaseOnGateway(uint256 value_) external returns (bytes32) {
         return _callAppGateway(
-            abi.encode(INCREASE_ON_GATEWAY, abi.encode(value)),
+            abi.encode(INCREASE_ON_GATEWAY, abi.encode(value_)),
             bytes32(0)
         );
     }
