@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
 
-import {InboxGateway} from "../../src/inbox/InboxGateway.sol";
+import {InboxAppGateway} from "../../src/inbox/InboxAppGateway.sol";
 import {InboxDeployer} from "../../src/inbox/InboxDeployer.sol";
 
 contract DeployEVMxContracts is Script {
@@ -23,7 +23,7 @@ contract DeployEVMxContracts is Script {
 
         InboxDeployer deployer = new InboxDeployer(addressResolver, auctionManager, FAST, fees);
 
-        InboxGateway gateway = new InboxGateway(addressResolver, address(deployer), auctionManager, fees);
+        InboxAppGateway gateway = new InboxAppGateway(addressResolver, address(deployer), auctionManager, fees);
 
         console.log("Contracts deployed:");
         console.log("Deployer:", address(deployer));

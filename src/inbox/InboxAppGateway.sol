@@ -15,7 +15,7 @@ interface IInbox {
     function updateFromGateway(uint256 value) external;
 }
 
-contract InboxGateway is AppGatewayBase {
+contract InboxAppGateway is AppGatewayBase {
     uint256 public value;
     address deployerAddress;
 
@@ -51,5 +51,13 @@ contract InboxGateway is AppGatewayBase {
         } else {
             revert("InboxGateway: invalid message type");
         }
+    }
+
+    function setFees(Fees memory fees_) public {
+        fees = fees_;
+    }
+
+    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
     }
 }
