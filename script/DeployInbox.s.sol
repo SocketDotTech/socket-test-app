@@ -3,10 +3,11 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {InboxGateway} from "../../src/apps/inbox/InboxGateway.sol";
-import {InboxDeployer} from "../../src/apps/inbox/InboxDeployer.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
+
+import {InboxGateway} from "../src/inbox/InboxGateway.sol";
+import {InboxDeployer} from "../src/inbox/InboxDeployer.sol";
 
 contract CounterDeploy is Script {
     function run() external {

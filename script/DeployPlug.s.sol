@@ -6,7 +6,8 @@ import {console} from "forge-std/console.sol";
 import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/FeesPlug.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
-import {InboxDeployer} from "../src/apps/inbox/InboxDeployer.sol";
+
+import {InboxDeployer} from "../src/inbox/InboxDeployer.sol";
 
 contract DeployPlug is Script {
     function run() external {
