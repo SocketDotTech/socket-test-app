@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./RobPlug.sol";
+import "./RobustnessMultichain.sol";
 import "socket-protocol/contracts/base/AppDeployerBase.sol";
 
-contract RobDeployer is AppDeployerBase {
+contract RobustnessDeployer is AppDeployerBase {
     bytes32 public rob = _createContractId("Rob");
 
     constructor(address addressResolver_, address auctionManager_, bytes32 sbType_, Fees memory fees_)
         AppDeployerBase(addressResolver_, auctionManager_, sbType_)
     {
-        creationCodeWithArgs[rob] = abi.encodePacked(type(RobPlug).creationCode);
+        creationCodeWithArgs[multichain] = abi.encodePacked(type(RobustnessMultichain).creationCode);
         _setOverrides(fees_);
     }
 

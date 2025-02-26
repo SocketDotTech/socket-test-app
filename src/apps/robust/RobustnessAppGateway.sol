@@ -2,9 +2,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "./IRobPlug.sol";
+import "./IRobustnessMultichain.sol";
 
-contract RobAppGateway is AppGatewayBase {
+contract RobustnessAppGateway is AppGatewayBase {
 
     uint256[] public values;
     uint256[] public resolveTimes = new uint256[](10);
@@ -21,29 +21,29 @@ contract RobAppGateway is AppGatewayBase {
     function triggerSequentialWrite(address instance_) public async {
         _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 10; i++) {
-            IRobPlug(instance_).increase();
+            IRobustnessMultichain(instance_).increase();
         }
     }
 
     function triggerParallelWrite(address instance_) public async {
         _setOverrides(Read.OFF, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            IRobPlug(instance_).increase();
+            IRobustnessMultichain(instance_).increase();
         }
     }
 
     function triggerAltWrite(address instance1_, address instance2_) public async {
         _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 5; i++) {
-            IRobPlug(instance1_).increase();
-            IRobPlug(instance2_).increase();
+            IRobustnessMultichain(instance1_).increase();
+            IRobustnessMultichain(instance2_).increase();
         }
     }
 
     function triggerParallelRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            IRobPlug(instance_).getValue(i);
+            IRobustnessMultichain(instance_).getValue(i);
             IPromise(instance_).then(this.setValue.selector, abi.encode(i));
         }
     }
@@ -52,10 +52,10 @@ contract RobAppGateway is AppGatewayBase {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             if (i % 2 == 0) {
-                IRobPlug(instance1_).getValue(i);
+                IRobustnessMultichain(instance1_).getValue(i);
                 IPromise(instance1_).then(this.setValue.selector, abi.encode(i));
             } else {
-                IRobPlug(instance2_).getValue(i);
+                IRobustnessMultichain(instance2_).getValue(i);
                 IPromise(instance2_).then(this.setValue.selector, abi.encode(i));
             }
         }
@@ -63,24 +63,24 @@ contract RobAppGateway is AppGatewayBase {
 
     function triggerReadAndWrite(address instance_) public async {
         _setOverrides(Read.ON, Parallel.OFF);
-        IRobPlug(instance_).getValue(0);
+        IRobustnessMultichain(instance_).getValue(0);
         IPromise(instance_).then(this.setValue.selector, abi.encode(0));
-        IRobPlug(instance_).getValue(1);
+        IRobustnessMultichain(instance_).getValue(1);
         IPromise(instance_).then(this.setValue.selector, abi.encode(1));
 
         _setOverrides(Read.OFF);
-        IRobPlug(instance_).increase();
-        IRobPlug(instance_).increase();
+        IRobustnessMultichain(instance_).increase();
+        IRobustnessMultichain(instance_).increase();
 
         _setOverrides(Read.ON);
-        IRobPlug(instance_).getValue(2);
+        IRobustnessMultichain(instance_).getValue(2);
         IPromise(instance_).then(this.setValue.selector, abi.encode(2));
-        IRobPlug(instance_).getValue(3);
+        IRobustnessMultichain(instance_).getValue(3);
         IPromise(instance_).then(this.setValue.selector, abi.encode(3));
 
         _setOverrides(Read.OFF);
-        IRobPlug(instance_).increase();
-        IRobPlug(instance_).increase();
+        IRobustnessMultichain(instance_).increase();
+        IRobustnessMultichain(instance_).increase();
     }
 
     function triggerTimeouts() public {

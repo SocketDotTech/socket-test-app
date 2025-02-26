@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {RobDeployer} from "../../src/apps/robust/RobDeployer.sol";
-import {RobAppGateway} from "../../src/apps/robust/RobAppGateway.sol";
+import {RobustnessDeployer} from "../../src/apps/robust/RobustnessDeployer.sol";
+import {RobustnessAppGateway} from "../../src/apps/robust/RobustnessAppGateway.sol";
 import {DepositFees} from "socket-protocol/script/PayFeesInArbitrumETH.s.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/FeesPlug.sol";
@@ -31,8 +31,8 @@ contract RunEVMxRobustness is Script {
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
     FeesPlug feesPlug = FeesPlug(payable(feesPlugArbSepolia));
 
-    RobDeployer deployer = RobDeployer(deployerAddress);
-    RobAppGateway appGateway = RobAppGateway(appGatewayAddress);
+    RobustnessDeployer deployer = RobustnessDeployer(deployerAddress);
+    RobustnessAppGateway appGateway = RobustnessAppGateway(appGatewayAddress);
     address opSepForwarder;
     address arbSepForwarder;
 
@@ -102,8 +102,8 @@ contract RunEVMxRobustness is Script {
 
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
-        opSepForwarder = deployer.forwarderAddresses(deployer.rob(), opSepChainId);
-        arbSepForwarder = deployer.forwarderAddresses(deployer.rob(), arbSepChainId);
+        opSepForwarder = deployer.forwarderAddresses(deployer.multichain(), opSepChainId);
+        arbSepForwarder = deployer.forwarderAddresses(deployer.multichain(), arbSepChainId);
 
         console.log("Optimism Sepolia Forwarder:", opSepForwarder);
         console.log("Arbitrum Sepolia Forwarder:", arbSepForwarder);

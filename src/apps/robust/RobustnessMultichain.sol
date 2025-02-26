@@ -3,7 +3,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/PlugBase.sol";
 
-contract RobPlug is PlugBase {
+contract RobustnessMultichain is PlugBase {
     uint256 public counter;
 
     uint256[] public values;
