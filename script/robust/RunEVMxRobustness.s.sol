@@ -26,19 +26,26 @@ contract RunEVMxRobustness is Script {
     // ----- SCRIPT VARIABLES -----
     uint32 arbSepChainId = 411614;
     uint32 opSepChainId = 11155420;
+
     Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
     FeesPlug feesPlug = FeesPlug(payable(feesPlugArbSepolia));
 
-    function checkDepositedFees(uint32 chainId, address appGateway) internal returns (uint256 availableFees) {
+    RobDeployer deployer = RobDeployer(deployerAddress);
+    RobAppGateway appGateway = RobAppGateway(appGatewayAddress);
+    address opSepForwarder;
+    address arbSepForwarder;
+
+    function checkDepositedFees(uint32 chainId) internal returns (uint256 availableFees) {
         vm.createSelectFork(rpcEVMx);
 
-        (uint256 deposited, uint256 blocked) = feesManager.appGatewayFeeBalances(appGateway, chainId, ETH_ADDRESS);
-        console.log("App Gateway:", appGateway);
+        (uint256 deposited, uint256 blocked) =
+            feesManager.appGatewayFeeBalances(appGatewayAddress, chainId, ETH_ADDRESS);
+        console.log("App Gateway:", appGatewayAddress);
         console.log("Deposited fees:", deposited);
         console.log("Blocked fees:", blocked);
 
-        availableFees = feesManager.getAvailableFees(chainId, appGateway, ETH_ADDRESS);
+        availableFees = feesManager.getAvailableFees(chainId, appGatewayAddress, ETH_ADDRESS);
         console.log("Available fees:", availableFees);
     }
 
@@ -71,7 +78,6 @@ contract RunEVMxRobustness is Script {
                 vm.startBroadcast(privateKey);
                 address sender = vm.addr(privateKey);
                 console.log("Withdrawing amount:", amountToWithdraw);
-                RobAppGateway appGateway = RobAppGateway(appGatewayAddress);
                 appGateway.withdrawFeeTokens(chainId, ETH_ADDRESS, amountToWithdraw, sender);
                 vm.stopBroadcast();
 
@@ -87,20 +93,103 @@ contract RunEVMxRobustness is Script {
     function deployOnchainContracts() internal {
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
-        RobDeployer deployer = RobDeployer(deployerAddress);
         deployer.deployContracts(opSepChainId);
         deployer.deployContracts(arbSepChainId);
+        vm.stopBroadcast();
 
-        console.log("Contracts deployed:");
+        console.log("Contracts deployed");
+    }
+
+    function getForwarderAddresses() internal {
+        vm.createSelectFork(rpcEVMx);
+        opSepForwarder = deployer.forwarderAddresses(deployer.rob(), opSepChainId);
+        arbSepForwarder = deployer.forwarderAddresses(deployer.rob(), arbSepChainId);
+
+        console.log("Optimism Sepolia Forwarder:", opSepForwarder);
+        console.log("Arbitrum Sepolia Forwarder:", arbSepForwarder);
+    }
+
+    function runAllTriggers() internal {
+        vm.createSelectFork(rpcEVMx);
+        vm.startBroadcast(privateKey);
+
+        console.log("Running all trigger functions...");
+
+        // 1. Trigger Sequential Write
+        console.log("triggerSequentialWrite...");
+        appGateway.triggerSequentialWrite(opSepForwarder);
+
+        // 2. Trigger Parallel Write
+        console.log("triggerParallelWrite...");
+        appGateway.triggerParallelWrite(arbSepForwarder);
+
+        // 3. Trigger Alternating Write between chains
+        console.log("triggerAltWrite...");
+        appGateway.triggerAltWrite(opSepForwarder, arbSepForwarder);
+
+        // 4. Trigger Parallel Read
+        console.log("triggerParallelRead...");
+        appGateway.triggerParallelRead(opSepForwarder);
+
+        // 5. Trigger Alternating Read between chains
+        console.log("triggerAltRead...");
+        appGateway.triggerAltRead(opSepForwarder, arbSepForwarder);
+
+        // 6. Trigger Read and Write
+        console.log("triggerReadAndWrite...");
+        appGateway.triggerReadAndWrite(arbSepForwarder);
+
+        // 7. Trigger Timeouts
+        console.log("triggerTimeouts...");
+        appGateway.triggerTimeouts();
+
+        vm.stopBroadcast();
+        console.log("All triggers executed successfully");
+    }
+
+    function checkResults() internal {
+        vm.createSelectFork(rpcEVMx);
+
+        console.log("\n----- RESULTS -----");
+
+        // Check values array
+        console.log("Values array:");
+        for (uint256 i = 0; i < 10; i++) {
+            try appGateway.values(i) returns (uint256 value) {
+                console.log("values[%s]: %s", i, value);
+            } catch {
+                console.log("values[%s]: not set", i);
+                break;
+            }
+        }
+
+        // Check resolve times for timeouts
+        console.log("\nTimeout resolve times:");
+        for (uint256 i = 0; i < 10; i++) {
+            uint256 resolveTime = appGateway.resolveTimes(i);
+            uint256 duration = appGateway.timeoutDurations(i);
+            if (resolveTime > 0) {
+                console.log("Timeout %s (duration %s): resolved at timestamp %s", i, duration, resolveTime);
+            } else {
+                console.log("Timeout %s (duration %s): not yet resolved", i, duration);
+            }
+        }
     }
 
     function run() external {
-        uint256 availableFees = checkDepositedFees(arbSepChainId, appGatewayAddress);
+        uint256 availableFees = checkDepositedFees(arbSepChainId);
+
         if (availableFees > 0) {
+            // Set up onchain deployments
             deployOnchainContracts();
+            getForwarderAddresses();
+
+            runAllTriggers();
+            checkResults(); // TODO: Check if we need to wait before checking the results
+
             withdrawAppFees(arbSepChainId);
         } else {
-            console.log("NO AVAILABLE FEES");
+            console.log("NO AVAILABLE FEES - Please deposit fees before running this script");
         }
     }
 }

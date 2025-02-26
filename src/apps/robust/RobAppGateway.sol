@@ -40,7 +40,7 @@ contract RobAppGateway is AppGatewayBase {
         }
     }
 
-    function triggerRead(address instance_) public async {
+    function triggerParallelRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IRobPlug(instance_).getValue(i);
