@@ -9,7 +9,7 @@ import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common
 import {DeploymentMistakesAppGateway} from "../../src/deployment-mistakes/DeploymentMistakesAppGateway.sol";
 import {DeploymentMistakesDeployer} from "../../src/deployment-mistakes/DeploymentMistakesDeployer.sol";
 
-contract DeployMistakes is Script {
+contract DeployEVMxContracts is Script {
     function run() external {
         address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
         address auctionManager = vm.envAddress("AUCTION_MANAGER");
