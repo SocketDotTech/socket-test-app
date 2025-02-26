@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
-import "./Inbox.sol";
+
 import "socket-protocol/contracts/base/AppDeployerBase.sol";
+import "./Inbox.sol";
 
 contract InboxDeployer is AppDeployerBase {
     bytes32 public inbox = _createContractId("inbox");

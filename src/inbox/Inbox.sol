@@ -5,27 +5,27 @@ import "solady/auth/Ownable.sol";
 import "socket-protocol/contracts/base/PlugBase.sol";
 
 contract Inbox is Ownable, PlugBase {
-    uint256 public testValue=0;
+    uint256 public value;
 
     // Message types
     uint32 public constant INCREASE_ON_GATEWAY = 1;
     uint32 public constant PROPAGATE_TO_ANOTHER = 2;
 
-    function increaseOnGateway() external returns (bytes32) {
+    function increaseOnGateway(uint256 value_) external returns (bytes32) {
         return _callAppGateway(
-            abi.encode(INCREASE_ON_GATEWAY, abi.encode(testValue+1)), 
+            abi.encode(INCREASE_ON_GATEWAY, abi.encode(value)),
             bytes32(0)
         );
     }
 
-    function propagateToAnother(uint32 _chainSlug) external returns (bytes32) { 
+    function propagateToAnother(uint32 targetChain) external returns (bytes32) {
         return _callAppGateway(
-            abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(testValue+1, _chainSlug)), 
+            abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(testValue, targetChain)),
             bytes32(0)
         );
     }
 
-    function pumpValue(uint256 value) external onlySocket {
-        testValue = value;
+    function updateFromGateway(uint256 value_) external onlySocket {
+        value = value_;
     }
 }
