@@ -9,10 +9,18 @@ import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/Fees
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
 import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/app-gateway/FeesManager.sol";
 
-import {RobustnessDeployer} from "../../src/robustness/RobustnessDeployer.sol";
-import {RobustnessAppGateway} from "../../src/robustness/RobustnessAppGateway.sol";
+import {DeploymentMistakesAppGateway} from "../../src/deployment-mistakes/DeploymentMistakesAppGateway.sol";
+import {DeploymentMistakesDeployer} from "../../src/deployment-mistakes/DeploymentMistakesDeployer.sol";
+import {
+    NoPlugNoInititialize,
+    NoPlugInitialize,
+    PlugNoInitialize,
+    PlugInitialize,
+    PlugInitializeTwice,
+    PlugNoInitInitialize
+} from "../../src/deployment-mistakes/DeployOnchainMistakes.sol";
 
-contract RunEVMxRobustness is Script {
+contract RunEVMxDeploy is Script {
     // ----- ENVIRONMENT VARIABLES -----
     string rpcEVMx = vm.envString("EVMX_RPC");
     string rpcArbSepolia = vm.envString("ARBITRUM_SEPOLIA_RPC");
@@ -32,10 +40,14 @@ contract RunEVMxRobustness is Script {
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
     FeesPlug feesPlug = FeesPlug(payable(feesPlugArbSepolia));
 
-    RobustnessDeployer deployer = RobustnessDeployer(deployerAddress);
-    RobustnessAppGateway appGateway = RobustnessAppGateway(appGatewayAddress);
-    address opSepForwarder;
-    address arbSepForwarder;
+    DeploymentMistakesDeployer deployer = DeploymentMistakesDeployer(deployerAddress);
+    DeploymentMistakesAppGateway appGateway = DeploymentMistakesAppGateway(appGatewayAddress);
+    address noPlugNoInititializeForwarder;
+    address noPlugInitializeForwarder;
+    address plugNoInitializeForwarder;
+    address plugInitializeForwarder;
+    address plugInitializeTwiceForwarder;
+    address plugNoInitInitializeForwarder;
 
     function checkDepositedFees(uint32 chainId) internal returns (uint256 availableFees) {
         vm.createSelectFork(rpcEVMx);
@@ -94,7 +106,6 @@ contract RunEVMxRobustness is Script {
     function deployOnchainContracts() internal {
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
-        deployer.deployContracts(opSepChainId);
         deployer.deployContracts(arbSepChainId);
         vm.stopBroadcast();
 
@@ -103,78 +114,70 @@ contract RunEVMxRobustness is Script {
 
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
-        opSepForwarder = deployer.forwarderAddresses(deployer.multichain(), opSepChainId);
-        arbSepForwarder = deployer.forwarderAddresses(deployer.multichain(), arbSepChainId);
 
-        console.log("Optimism Sepolia Forwarder:", opSepForwarder);
-        console.log("Arbitrum Sepolia Forwarder:", arbSepForwarder);
+        noPlugNoInititializeForwarder = deployer.forwarderAddresses(deployer.noPlugNoInititialize(), arbSepChainId);
+        console.log("No Plug No Init Forwarder:", noPlugNoInititializeForwarder);
+
+        noPlugInitializeForwarder = deployer.forwarderAddresses(deployer.noPlugInitialize(), arbSepChainId);
+        console.log("No Plug Init Forwarder:", noPlugInitializeForwarder);
+
+        plugNoInitializeForwarder = deployer.forwarderAddresses(deployer.plugNoInitialize(), arbSepChainId);
+        console.log("Plug No Init Forwarder:", plugNoInitializeForwarder);
+
+        plugInitializeForwarder = deployer.forwarderAddresses(deployer.plugInitialize(), arbSepChainId);
+        console.log("Plug Init Forwarder:", plugInitializeForwarder);
+
+        plugInitializeTwiceForwarder = deployer.forwarderAddresses(deployer.plugInitializeTwice(), arbSepChainId);
+        console.log("Plug Init Init Forwarder:", plugInitializeTwiceForwarder);
+
+        plugNoInitInitializeForwarder = deployer.forwarderAddresses(deployer.plugNoInitInitialize(), arbSepChainId);
+        console.log("Plug No Init Init Forwarder:", plugNoInitInitializeForwarder);
     }
 
-    function runAllTriggers() internal {
-        vm.createSelectFork(rpcEVMx);
+    function validateMistakes() internal {
+        NoPlugNoInititialize noPlugNoInititialize = NoPlugNoInititialize(noPlugNoInititializeForwarder);
+        NoPlugInitialize noPlugInitialize = NoPlugInitialize(noPlugInitializeForwarder);
+        PlugNoInitialize plugNoInitialize = PlugNoInitialize(plugNoInitializeForwarder);
+        PlugInitialize plugInitialize = PlugInitialize(plugInitializeForwarder);
+        PlugInitializeTwice plugInitializeTwice = PlugInitializeTwice(plugInitializeTwiceForwarder);
+        PlugNoInitInitialize plugNoInitInitialize = PlugNoInitInitialize(plugNoInitInitializeForwarder);
+
+        vm.createSelectFork(rpcArbSepolia);
         vm.startBroadcast(privateKey);
 
-        console.log("Running all trigger functions...");
+        // NoPlugNoInititialize checks
+        require(noPlugNoInititialize.variable() == 0, "variable should be 0");
+        (bool success,) = noPlugNoInititializeForwarder.call(abi.encodeWithSignature("socket__()"));
+        require(!success, "Should revert on socket__()");
+        console.log("NoPlugNoInititialize checks passed");
 
-        // 1. Trigger Sequential Write
-        console.log("triggerSequentialWrite...");
-        appGateway.triggerSequentialWrite(opSepForwarder);
+        // NoPlugInitialize checks
+        require(noPlugInitialize.variable() == 10, "variable should be 10");
+        (success,) = noPlugInitializeForwarder.call(abi.encodeWithSignature("socket__()"));
+        require(!success, "Should revert on socket__()");
+        console.log("NoPlugInitialize checks passed");
 
-        // 2. Trigger Parallel Write
-        console.log("triggerParallelWrite...");
-        appGateway.triggerParallelWrite(arbSepForwarder);
+        // PlugNoInitialize checks
+        require(plugNoInitialize.variable() == 0, "variable should be 0");
+        require(address(plugNoInitialize.socket__()) != address(0), "Should return socket address");
+        console.log("PlugNoInitialize checks passed");
 
-        // 3. Trigger Alternating Write between chains
-        console.log("triggerAltWrite...");
-        appGateway.triggerAltWrite(opSepForwarder, arbSepForwarder);
+        // PlugInitialize checks
+        require(plugInitialize.variable() == 10, "variable should be 10");
+        require(address(plugInitialize.socket__()) != address(0), "Should return socket address");
+        console.log("PlugInitialize checks passed");
 
-        // 4. Trigger Parallel Read
-        console.log("triggerParallelRead...");
-        appGateway.triggerParallelRead(opSepForwarder);
+        // PlugInitializeTwice checks
+        require(address(plugInitializeTwice.socket__()) != address(0), "Should return socket address");
+        require(plugInitializeTwice.variable() == 20, "variable should be 20");
+        console.log("PlugInitializeTwice checks passed");
 
-        // 5. Trigger Alternating Read between chains
-        console.log("triggerAltRead...");
-        appGateway.triggerAltRead(opSepForwarder, arbSepForwarder);
-
-        // 6. Trigger Read and Write
-        console.log("triggerReadAndWrite...");
-        appGateway.triggerReadAndWrite(arbSepForwarder);
-
-        // 7. Trigger Timeouts
-        console.log("triggerTimeouts...");
-        appGateway.triggerTimeouts();
+        // PlugNoInitInitialize checks
+        require(plugNoInitInitialize.variable() == 10, "variable should be 10");
+        require(address(plugNoInitInitialize.socket__()) != address(0), "Should return socket address");
+        console.log("PlugNoInitInitialize checks passed");
 
         vm.stopBroadcast();
-        console.log("All triggers executed successfully");
-    }
-
-    function checkResults() internal {
-        vm.createSelectFork(rpcEVMx);
-
-        console.log("\n----- RESULTS -----");
-
-        // Check values array
-        console.log("Values array:");
-        for (uint256 i = 0; i < 10; i++) {
-            try appGateway.values(i) returns (uint256 value) {
-                console.log("values[%s]: %s", i, value);
-            } catch {
-                console.log("values[%s]: not set", i);
-                break;
-            }
-        }
-
-        // Check resolve times for timeouts
-        console.log("\nTimeout resolve times:");
-        for (uint256 i = 0; i < 10; i++) {
-            uint256 resolveTime = appGateway.resolveTimes(i);
-            uint256 duration = appGateway.timeoutDurations(i);
-            if (resolveTime > 0) {
-                console.log("Timeout %s (duration %s): resolved at timestamp %s", i, duration, resolveTime);
-            } else {
-                console.log("Timeout %s (duration %s): not yet resolved", i, duration);
-            }
-        }
     }
 
     function run() external {
@@ -185,8 +188,7 @@ contract RunEVMxRobustness is Script {
             deployOnchainContracts();
             getForwarderAddresses();
 
-            runAllTriggers();
-            checkResults(); // TODO: Check if we need to wait before checking the results
+            validateMistakes();
 
             withdrawAppFees(arbSepChainId);
         } else {
