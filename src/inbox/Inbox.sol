@@ -20,7 +20,7 @@ contract Inbox is Ownable, PlugBase {
 
     function propagateToAnother(uint32 targetChain) external returns (bytes32) {
         return _callAppGateway(
-            abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(testValue, targetChain)),
+            abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(value, targetChain)),
             bytes32(0)
         );
     }

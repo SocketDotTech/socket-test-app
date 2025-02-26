@@ -42,10 +42,10 @@ contract InboxGateway is AppGatewayBase {
     ) external override onlyWatcherPrecompile {
         (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
         if (msgType == INCREASE_ON_GATEWAY) {
-            uint256 value = abi.decode(payload, (uint256));
-            value += 1;
+            uint256 valueOnchain = abi.decode(payload, (uint256));
+            value += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
-            (uint256 value, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
+            (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
             address inboxForwarderAddress = IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
             IInbox(inboxForwarderAddress).updateFromGateway(value);
         } else {
