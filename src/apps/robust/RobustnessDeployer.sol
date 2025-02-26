@@ -5,7 +5,7 @@ import "./RobustnessMultichain.sol";
 import "socket-protocol/contracts/base/AppDeployerBase.sol";
 
 contract RobustnessDeployer is AppDeployerBase {
-    bytes32 public rob = _createContractId("Rob");
+    bytes32 public multichain = _createContractId("RobustnessMultichain");
 
     constructor(address addressResolver_, address auctionManager_, bytes32 sbType_, Fees memory fees_)
         AppDeployerBase(addressResolver_, auctionManager_, sbType_)
@@ -15,7 +15,7 @@ contract RobustnessDeployer is AppDeployerBase {
     }
 
     function deployContracts(uint32 chainSlug_) external async {
-        _deploy(rob, chainSlug_, IsPlug.YES);
+        _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
      function initialize(uint32) public pure override {

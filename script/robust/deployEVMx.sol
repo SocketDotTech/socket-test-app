@@ -22,7 +22,8 @@ contract DeployEVMxContracts is Script {
 
         RobustnessDeployer deployer = new RobustnessDeployer(addressResolver, auctionManager, FAST, fees);
 
-        RobustnessAppGateway gateway = new RobustnessAppGateway(addressResolver, address(deployer), auctionManager, fees);
+        RobustnessAppGateway gateway =
+            new RobustnessAppGateway(addressResolver, address(deployer), auctionManager, fees);
 
         console.log("Contracts deployed:");
         console.log("Deployer:", address(deployer));
