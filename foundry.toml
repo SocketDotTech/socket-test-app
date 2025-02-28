@@ -1,6 +1,6 @@
 [profile.default]
 solc_version = "0.8.22"
-src = "contracts"
+src = "src"
 out = "out"
 libs = ["lib"]
 ffi = true
