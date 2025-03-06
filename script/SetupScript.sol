@@ -22,7 +22,6 @@ abstract contract SetupScript is Script {
     address feesPlugArbSepolia = vm.envAddress("ARBITRUM_FEES_PLUG");
     address feesManagerAddress = vm.envAddress("FEES_MANAGER");
     uint256 privateKey = vm.envUint("PRIVATE_KEY");
-    address deployerAddress = vm.envAddress("DEPLOYER");
     address appGatewayAddress = vm.envAddress("APP_GATEWAY");
 
     // ----- SCRIPT VARIABLES -----
