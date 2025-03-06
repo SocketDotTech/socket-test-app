@@ -19,9 +19,10 @@ contract DeployEVMxContracts is Script {
 
         Fees memory fees = Fees({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
 
-        ReadAppGateway gateway = new ReadAppGateway(addressResolver, fees);
+        ReadAppGateway appGateway = new ReadAppGateway(addressResolver, fees);
 
         console.log("Contracts deployed:");
-        console.log("AppGateway:", address(gateway));
+        console.log("AppGateway:", address(appGateway));
+        console.log("See AppGateway on EVMx: https://evmx.cloud.blockscout.com/address/%s", address(appGateway));
     }
 }
