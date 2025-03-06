@@ -12,9 +12,5 @@ interface IRobustnessMultichain {
 
     function getValue(uint256 index_) external;
 
-    function connectSocket(
-        address appGateway_,
-        address socket_,
-        address switchboard_
-    ) external;
+    function connectSocket(address appGateway_, address socket_, address switchboard_) external;
 }

@@ -5,7 +5,6 @@ import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./IRobustnessMultichain.sol";
 
 contract RobustnessAppGateway is AppGatewayBase {
-
     uint256[] public values;
     uint256[] public resolveTimes = new uint256[](10);
 
@@ -86,12 +85,7 @@ contract RobustnessAppGateway is AppGatewayBase {
     function triggerTimeouts() public {
         for (uint256 i = 0; i < timeoutDurations.length; i++) {
             watcherPrecompile__().setTimeout(
-                address(this),
-                abi.encodeWithSelector(
-                    this.resolveTimeout.selector,
-                    i
-                ),
-                timeoutDurations[i]
+                address(this), abi.encodeWithSelector(this.resolveTimeout.selector, i), timeoutDurations[i]
             );
         }
     }

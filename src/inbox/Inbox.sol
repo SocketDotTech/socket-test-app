@@ -12,17 +12,11 @@ contract Inbox is Ownable, PlugBase {
     uint32 public constant PROPAGATE_TO_ANOTHER = 2;
 
     function increaseOnGateway(uint256 value_) external returns (bytes32) {
-        return _callAppGateway(
-            abi.encode(INCREASE_ON_GATEWAY, abi.encode(value_)),
-            bytes32(0)
-        );
+        return _callAppGateway(abi.encode(INCREASE_ON_GATEWAY, abi.encode(value_)), bytes32(0));
     }
 
     function propagateToAnother(uint32 targetChain) external returns (bytes32) {
-        return _callAppGateway(
-            abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(value, targetChain)),
-            bytes32(0)
-        );
+        return _callAppGateway(abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(value, targetChain)), bytes32(0));
     }
 
     function updateFromGateway(uint256 value_) external onlySocket {

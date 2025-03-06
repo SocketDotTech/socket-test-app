@@ -30,11 +30,7 @@ contract RobustnessMultichain is PlugBase {
         return values[index_];
     }
 
-    function connectSocket(
-        address appGateway_,
-        address socket_,
-        address switchboard_
-    ) external {
+    function connectSocket(address appGateway_, address socket_, address switchboard_) external {
         _connectSocket(appGateway_, socket_, switchboard_);
     }
 }

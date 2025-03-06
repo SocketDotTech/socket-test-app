@@ -18,9 +18,9 @@ contract RobustnessDeployer is AppDeployerBase {
         _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
-     function initialize(uint32) public pure override {
-         return;
-     }
+    function initialize(uint32) public pure override {
+        return;
+    }
 
     function setFees(Fees memory fees_) public {
         fees = fees_;
