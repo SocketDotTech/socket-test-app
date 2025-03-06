@@ -58,16 +58,13 @@ contract RunEVMxRead is SetupScript {
         }
     }
 
-    function executeScriptSpecificLogic() internal override {
-        // Initialize contract references
+    // Initialize contract references
+    function init() internal {
         readAppGateway = ReadAppGateway(appGatewayAddress);
+    }
 
-        // Deploy to both test chains
-        uint32[] memory chainIds = new uint32[](2);
-        chainIds[0] = opSepChainId;
-        chainIds[1] = arbSepChainId;
-        deployOnchainContracts(chainIds);
-
+    function executeScriptSpecificLogic() internal override {
+        init();
         getForwarderAddresses();
         runAllTriggers();
         checkResults();
@@ -75,5 +72,10 @@ contract RunEVMxRead is SetupScript {
 
     function run() external {
         _run(arbSepChainId);
+    }
+
+    function deployOnchainContracts() external {
+        init();
+        _deployOnchainContracts();
     }
 }

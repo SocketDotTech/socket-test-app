@@ -100,20 +100,23 @@ contract RunEVMxDeploymentMistakes is SetupScript {
         vm.stopBroadcast();
     }
 
-    function executeScriptSpecificLogic() internal override {
-        // Initialize contract references
+    // Initialize contract references
+    function init() internal {
         mistakesAppGateway = DeploymentMistakesAppGateway(appGatewayAddress);
+    }
 
-        // Deploy only to Arbitrum Sepolia
-        uint32[] memory chainIds = new uint32[](1);
-        chainIds[0] = arbSepChainId;
-        deployOnchainContracts(chainIds);
-
+    function executeScriptSpecificLogic() internal override {
+        init();
         getForwarderAddresses();
         validateMistakes();
     }
 
     function run() external {
         _run(arbSepChainId);
+    }
+
+    function deployOnchainContracts() external {
+        init();
+        _deployOnchainContracts();
     }
 }

@@ -27,6 +27,7 @@ abstract contract SetupScript is Script {
     // ----- SCRIPT VARIABLES -----
     uint32 arbSepChainId = 421614;
     uint32 opSepChainId = 11155420;
+    uint32[2] chainIds = [opSepChainId, arbSepChainId];
 
     Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
@@ -86,7 +87,7 @@ abstract contract SetupScript is Script {
         }
     }
 
-    function deployOnchainContracts(uint32[] memory chainIds) internal {
+    function _deployOnchainContracts() internal {
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
 

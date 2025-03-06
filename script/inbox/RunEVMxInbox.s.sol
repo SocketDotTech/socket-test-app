@@ -41,21 +41,23 @@ contract RunEVMxInbox is SetupScript {
         console.log("All inbox transactions executed successfully");
     }
 
-    function executeScriptSpecificLogic() internal override {
-        // Initialize contract references
+    // Initialize contract references
+    function init() internal {
         inboxAppGateway = InboxAppGateway(appGatewayAddress);
+    }
 
-        // Deploy to both test chains
-        uint32[] memory chainIds = new uint32[](2);
-        chainIds[0] = opSepChainId;
-        chainIds[1] = arbSepChainId;
-        deployOnchainContracts(chainIds);
-
+    function executeScriptSpecificLogic() internal override {
+        init();
         getForwarderAddresses();
         inboxTransactions();
     }
 
     function run() external {
         _run(arbSepChainId);
+    }
+
+    function deployOnchainContracts() external {
+        init();
+        _deployOnchainContracts();
     }
 }
