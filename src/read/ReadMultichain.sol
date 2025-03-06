@@ -10,15 +10,14 @@ contract ReadMultichain is PlugBase {
 
     constructor() {
         values = new uint256[](10);
-        uint256 seed = (block.number % 10) + 1;
-        for (uint256 i = 0; i < 10; i++) {
-            values[i] = seed + i;
-        }
-        emit ValuesInitialized(values);
-    }
+        uint256 baseSeed = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender)));
 
-    function getValue(uint256 index_) external view returns (uint256) {
-        return values[index_];
+        for (uint256 i = 0; i < 10; i++) {
+            uint256 uniqueSeed = uint256(keccak256(abi.encodePacked(baseSeed, i)));
+            values[i] = (uniqueSeed % 10) + 1;
+        }
+
+        emit ValuesInitialized(values);
     }
 
     function connectSocket(address appGateway_, address socket_, address switchboard_) external {

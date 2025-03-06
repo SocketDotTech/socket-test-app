@@ -29,8 +29,8 @@ contract ReadAppGateway is AppGatewayBase {
     function triggerParallelRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            IReadMultichain(instance_).getValue(i);
-            IPromise(instance_).then(this.handleValue.selector, abi.encode(i));
+            IReadMultichain(instance_).values(i);
+            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
         }
     }
 
@@ -38,20 +38,20 @@ contract ReadAppGateway is AppGatewayBase {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             if (i % 2 == 0) {
-                IReadMultichain(instance1_).getValue(i);
-                IPromise(instance1_).then(this.handleValue.selector, abi.encode(i));
+                IReadMultichain(instance1_).values(i);
+                IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));
             } else {
-                IReadMultichain(instance2_).getValue(i);
-                IPromise(instance2_).then(this.handleValue.selector, abi.encode(i));
+                IReadMultichain(instance2_).values(i);
+                IPromise(instance2_).then(this.handleValue.selector, abi.encode(i, instance2_));
             }
         }
     }
 
     function handleValue(bytes memory data, bytes memory returnData) public onlyPromises {
-        uint256 index_ = abi.decode(data, (uint256));
+        (uint256 index_, address instance) = abi.decode(data, (uint256, address));
         uint256 value_ = abi.decode(returnData, (uint256));
         values[index_] = value_;
-        emit ValueRead(msg.sender, index_, value_);
+        emit ValueRead(instance, index_, value_);
     }
 
     function setFees(Fees memory fees_) public {
