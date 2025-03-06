@@ -25,7 +25,7 @@ abstract contract SetupScript is Script {
     address appGatewayAddress = vm.envAddress("APP_GATEWAY");
 
     // ----- SCRIPT VARIABLES -----
-    uint32 arbSepChainId = 411614;
+    uint32 arbSepChainId = 421614;
     uint32 opSepChainId = 11155420;
 
     Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
