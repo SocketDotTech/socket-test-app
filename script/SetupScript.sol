@@ -3,18 +3,15 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {DepositFees} from "socket-protocol/script/PayFeesInArbitrumETH.s.sol";
+import {DepositFees} from "socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/FeesPlug.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
-import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/app-gateway/FeesManager.sol";
+import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/FeesManager.sol";
 
 interface IAppGateway {
-    function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address recipient) external;
-}
-
-interface IDeployer {
     function deployContracts(uint32 chainId) external;
+    function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address recipient) external;
 }
 
 abstract contract SetupScript is Script {
@@ -96,7 +93,7 @@ abstract contract SetupScript is Script {
         vm.startBroadcast(privateKey);
 
         for (uint256 i = 0; i < chainIds.length; i++) {
-            IDeployer(deployer()).deployContracts(chainIds[i]);
+            IAppGateway(appGateway()).deployContracts(chainIds[i]);
         }
 
         vm.stopBroadcast();
@@ -105,7 +102,6 @@ abstract contract SetupScript is Script {
 
     // Abstract functions to be implemented by child contracts
     function appGateway() internal view virtual returns (address);
-    function deployer() internal view virtual returns (address);
 
     // Standard flow
     // Each implementation script will call these functions

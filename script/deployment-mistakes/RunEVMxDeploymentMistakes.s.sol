@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
 import {DeploymentMistakesAppGateway} from "../../src/deployment-mistakes/DeploymentMistakesAppGateway.sol";
-import {DeploymentMistakesDeployer} from "../../src/deployment-mistakes/DeploymentMistakesDeployer.sol";
 import {
     NoPlugNoInititialize,
     NoPlugInitialize,
@@ -15,7 +14,6 @@ import {
 } from "../../src/deployment-mistakes/DeployOnchainMistakes.sol";
 
 contract RunEVMxDeploymentMistakes is SetupScript {
-    DeploymentMistakesDeployer mistakesDeployer;
     DeploymentMistakesAppGateway mistakesAppGateway;
     address noPlugNoInititializeForwarder;
     address noPlugInitializeForwarder;
@@ -28,34 +26,31 @@ contract RunEVMxDeploymentMistakes is SetupScript {
         return address(mistakesAppGateway);
     }
 
-    function deployer() internal view override returns (address) {
-        return address(mistakesDeployer);
-    }
-
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
 
         noPlugNoInititializeForwarder =
-            mistakesDeployer.forwarderAddresses(mistakesDeployer.noPlugNoInititialize(), arbSepChainId);
+            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.noPlugNoInititialize(), arbSepChainId);
         console.log("No Plug No Init Forwarder:", noPlugNoInititializeForwarder);
 
         noPlugInitializeForwarder =
-            mistakesDeployer.forwarderAddresses(mistakesDeployer.noPlugInitialize(), arbSepChainId);
+            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.noPlugInitialize(), arbSepChainId);
         console.log("No Plug Init Forwarder:", noPlugInitializeForwarder);
 
         plugNoInitializeForwarder =
-            mistakesDeployer.forwarderAddresses(mistakesDeployer.plugNoInitialize(), arbSepChainId);
+            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugNoInitialize(), arbSepChainId);
         console.log("Plug No Init Forwarder:", plugNoInitializeForwarder);
 
-        plugInitializeForwarder = mistakesDeployer.forwarderAddresses(mistakesDeployer.plugInitialize(), arbSepChainId);
+        plugInitializeForwarder =
+            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugInitialize(), arbSepChainId);
         console.log("Plug Init Forwarder:", plugInitializeForwarder);
 
         plugInitializeTwiceForwarder =
-            mistakesDeployer.forwarderAddresses(mistakesDeployer.plugInitializeTwice(), arbSepChainId);
+            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugInitializeTwice(), arbSepChainId);
         console.log("Plug Init Init Forwarder:", plugInitializeTwiceForwarder);
 
         plugNoInitInitializeForwarder =
-            mistakesDeployer.forwarderAddresses(mistakesDeployer.plugNoInitInitialize(), arbSepChainId);
+            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugNoInitInitialize(), arbSepChainId);
         console.log("Plug No Init Init Forwarder:", plugNoInitInitializeForwarder);
     }
 
@@ -107,7 +102,6 @@ contract RunEVMxDeploymentMistakes is SetupScript {
 
     function executeScriptSpecificLogic() internal override {
         // Initialize contract references
-        mistakesDeployer = DeploymentMistakesDeployer(deployerAddress);
         mistakesAppGateway = DeploymentMistakesAppGateway(appGatewayAddress);
 
         // Deploy only to Arbitrum Sepolia

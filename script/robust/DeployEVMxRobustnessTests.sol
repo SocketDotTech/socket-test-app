@@ -6,13 +6,11 @@ import {console} from "forge-std/console.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
 
-import {RobustnessDeployer} from "../../src/robustness/RobustnessDeployer.sol";
 import {RobustnessAppGateway} from "../../src/robustness/RobustnessAppGateway.sol";
 
 contract DeployEVMxContracts is Script {
     function run() external {
         address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
-        address auctionManager = vm.envAddress("AUCTION_MANAGER");
         string memory rpc = vm.envString("EVMX_RPC");
         vm.createSelectFork(rpc);
 
@@ -21,13 +19,9 @@ contract DeployEVMxContracts is Script {
 
         Fees memory fees = Fees({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
 
-        RobustnessDeployer deployer = new RobustnessDeployer(addressResolver, auctionManager, FAST, fees);
-
-        RobustnessAppGateway gateway =
-            new RobustnessAppGateway(addressResolver, address(deployer), auctionManager, fees);
+        RobustnessAppGateway gateway = new RobustnessAppGateway(addressResolver, fees);
 
         console.log("Contracts deployed:");
-        console.log("Deployer:", address(deployer));
         console.log("AppGateway:", address(gateway));
     }
 }

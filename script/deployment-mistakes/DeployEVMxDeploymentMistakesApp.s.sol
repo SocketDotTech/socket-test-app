@@ -7,12 +7,10 @@ import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol"
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
 
 import {DeploymentMistakesAppGateway} from "../../src/deployment-mistakes/DeploymentMistakesAppGateway.sol";
-import {DeploymentMistakesDeployer} from "../../src/deployment-mistakes/DeploymentMistakesDeployer.sol";
 
 contract DeployEVMxContracts is Script {
     function run() external {
         address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
-        address auctionManager = vm.envAddress("AUCTION_MANAGER");
         string memory rpc = vm.envString("EVMX_RPC");
         vm.createSelectFork(rpc);
 
@@ -21,28 +19,9 @@ contract DeployEVMxContracts is Script {
 
         Fees memory fees = Fees({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
 
-        DeploymentMistakesDeployer deployer =
-            new DeploymentMistakesDeployer(addressResolver, auctionManager, FAST, fees);
-
-        DeploymentMistakesAppGateway gateway =
-            new DeploymentMistakesAppGateway(addressResolver, address(deployer), auctionManager, fees);
+        DeploymentMistakesAppGateway gateway = new DeploymentMistakesAppGateway(addressResolver, fees);
 
         console.log("Contracts deployed:");
-        console.log("DeploymentMistakesDeployer:", address(deployer));
         console.log("DeploymentMistakesAppGateway:", address(gateway));
-
-        console.log("DeploymentMistakesDeployer contract ids:");
-        console.log("noPlugNoInititialize");
-        console.logBytes32(deployer.noPlugNoInititialize());
-        console.log("noPlugInitialize");
-        console.logBytes32(deployer.noPlugInitialize());
-        console.log("plugNoInitialize");
-        console.logBytes32(deployer.plugNoInitialize());
-        console.log("plugInitialize");
-        console.logBytes32(deployer.plugInitialize());
-        console.log("plugInitializeTwice");
-        console.logBytes32(deployer.plugInitializeTwice());
-        console.log("plugNoInitInitialize");
-        console.logBytes32(deployer.plugNoInitInitialize());
     }
 }

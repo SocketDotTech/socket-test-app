@@ -3,18 +3,26 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./IRobustnessMultichain.sol";
+import "./RobustnessMultichain.sol";
 
 contract RobustnessAppGateway is AppGatewayBase {
+    bytes32 public multichain = _createContractId("RobustnessMultichain");
     uint256[] public values;
     uint256[] public resolveTimes = new uint256[](10);
 
     uint256[] public timeoutDurations = [1, 10, 20, 30, 40, 50, 100, 500, 1000, 10000];
 
-    constructor(address addressResolver_, address deployerContract_, address auctionManager_, Fees memory fees_)
-        AppGatewayBase(addressResolver_, auctionManager_)
-    {
-        addressResolver__.setContractsToGateways(deployerContract_);
+    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+        creationCodeWithArgs[multichain] = abi.encodePacked(type(RobustnessMultichain).creationCode);
         _setOverrides(fees_);
+    }
+
+    function deployContracts(uint32 chainSlug_) external async {
+        _deploy(multichain, chainSlug_, IsPlug.YES);
+    }
+
+    function initialize(uint32) public pure override {
+        return;
     }
 
     function triggerSequentialWrite(address instance_) public async {

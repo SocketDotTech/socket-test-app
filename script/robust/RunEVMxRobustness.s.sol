@@ -3,11 +3,9 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
-import {RobustnessDeployer} from "../../src/robustness/RobustnessDeployer.sol";
 import {RobustnessAppGateway} from "../../src/robustness/RobustnessAppGateway.sol";
 
 contract RunEVMxRobustness is SetupScript {
-    RobustnessDeployer robustnessDeployer;
     RobustnessAppGateway robustnessAppGateway;
     address opSepForwarder;
     address arbSepForwarder;
@@ -16,14 +14,10 @@ contract RunEVMxRobustness is SetupScript {
         return address(robustnessAppGateway);
     }
 
-    function deployer() internal view override returns (address) {
-        return address(robustnessDeployer);
-    }
-
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
-        opSepForwarder = robustnessDeployer.forwarderAddresses(robustnessDeployer.multichain(), opSepChainId);
-        arbSepForwarder = robustnessDeployer.forwarderAddresses(robustnessDeployer.multichain(), arbSepChainId);
+        opSepForwarder = robustnessAppGateway.forwarderAddresses(robustnessAppGateway.multichain(), opSepChainId);
+        arbSepForwarder = robustnessAppGateway.forwarderAddresses(robustnessAppGateway.multichain(), arbSepChainId);
 
         console.log("Optimism Sepolia Forwarder:", opSepForwarder);
         console.log("Arbitrum Sepolia Forwarder:", arbSepForwarder);
@@ -98,7 +92,6 @@ contract RunEVMxRobustness is SetupScript {
 
     function executeScriptSpecificLogic() internal override {
         // Initialize contract references
-        robustnessDeployer = RobustnessDeployer(deployerAddress);
         robustnessAppGateway = RobustnessAppGateway(appGatewayAddress);
 
         // Deploy to both test chains
