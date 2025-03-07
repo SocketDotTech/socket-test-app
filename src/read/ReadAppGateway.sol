@@ -50,6 +50,11 @@ contract ReadAppGateway is AppGatewayBase {
     function handleValue(bytes memory data, bytes memory returnData) public onlyPromises {
         (uint256 index_, address instance) = abi.decode(data, (uint256, address));
         uint256 value_ = abi.decode(returnData, (uint256));
+
+        while (values.length <= index_) {
+            values.push(0);
+        }
+
         values[index_] = value_;
         emit ValueRead(instance, index_, value_);
     }
