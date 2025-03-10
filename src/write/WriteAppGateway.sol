@@ -2,18 +2,18 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "./IRobustnessMultichain.sol";
-import "./RobustnessMultichain.sol";
+import "./IWriteMultichain.sol";
+import "./WriteMultichain.sol";
 
-contract RobustnessAppGateway is AppGatewayBase {
-    bytes32 public multichain = _createContractId("RobustnessMultichain");
+contract WriteAppGateway is AppGatewayBase {
+    bytes32 public multichain = _createContractId("WriteMultichain");
     uint256[] public values;
     uint256[] public resolveTimes = new uint256[](10);
 
     uint256[] public timeoutDurations = [1, 10, 20, 30, 40, 50, 100, 500, 1000, 10000];
 
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
-        creationCodeWithArgs[multichain] = abi.encodePacked(type(RobustnessMultichain).creationCode);
+        creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
         _setOverrides(fees_);
     }
 
@@ -28,29 +28,29 @@ contract RobustnessAppGateway is AppGatewayBase {
     function triggerSequentialWrite(address instance_) public async {
         _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 10; i++) {
-            IRobustnessMultichain(instance_).increase();
+            IWriteMultichain(instance_).increase();
         }
     }
 
     function triggerParallelWrite(address instance_) public async {
         _setOverrides(Read.OFF, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            IRobustnessMultichain(instance_).increase();
+            IWriteMultichain(instance_).increase();
         }
     }
 
     function triggerAltWrite(address instance1_, address instance2_) public async {
         _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 5; i++) {
-            IRobustnessMultichain(instance1_).increase();
-            IRobustnessMultichain(instance2_).increase();
+            IWriteMultichain(instance1_).increase();
+            IWriteMultichain(instance2_).increase();
         }
     }
 
     function triggerParallelRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
-            IRobustnessMultichain(instance_).getValue(i);
+            IWriteMultichain(instance_).getValue(i);
             IPromise(instance_).then(this.setValue.selector, abi.encode(i));
         }
     }
@@ -59,10 +59,10 @@ contract RobustnessAppGateway is AppGatewayBase {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             if (i % 2 == 0) {
-                IRobustnessMultichain(instance1_).getValue(i);
+                IWriteMultichain(instance1_).getValue(i);
                 IPromise(instance1_).then(this.setValue.selector, abi.encode(i));
             } else {
-                IRobustnessMultichain(instance2_).getValue(i);
+                IWriteMultichain(instance2_).getValue(i);
                 IPromise(instance2_).then(this.setValue.selector, abi.encode(i));
             }
         }
@@ -70,24 +70,24 @@ contract RobustnessAppGateway is AppGatewayBase {
 
     function triggerReadAndWrite(address instance_) public async {
         _setOverrides(Read.ON, Parallel.OFF);
-        IRobustnessMultichain(instance_).getValue(0);
+        IWriteMultichain(instance_).getValue(0);
         IPromise(instance_).then(this.setValue.selector, abi.encode(0));
-        IRobustnessMultichain(instance_).getValue(1);
+        IWriteMultichain(instance_).getValue(1);
         IPromise(instance_).then(this.setValue.selector, abi.encode(1));
 
         _setOverrides(Read.OFF);
-        IRobustnessMultichain(instance_).increase();
-        IRobustnessMultichain(instance_).increase();
+        IWriteMultichain(instance_).increase();
+        IWriteMultichain(instance_).increase();
 
         _setOverrides(Read.ON);
-        IRobustnessMultichain(instance_).getValue(2);
+        IWriteMultichain(instance_).getValue(2);
         IPromise(instance_).then(this.setValue.selector, abi.encode(2));
-        IRobustnessMultichain(instance_).getValue(3);
+        IWriteMultichain(instance_).getValue(3);
         IPromise(instance_).then(this.setValue.selector, abi.encode(3));
 
         _setOverrides(Read.OFF);
-        IRobustnessMultichain(instance_).increase();
-        IRobustnessMultichain(instance_).increase();
+        IWriteMultichain(instance_).increase();
+        IWriteMultichain(instance_).increase();
     }
 
     function triggerTimeouts() public {

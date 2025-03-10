@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
-import {RobustnessAppGateway} from "../../src/robustness/RobustnessAppGateway.sol";
+import {WriteAppGateway} from "../../src/robustness/WriteAppGateway.sol";
 
-contract RunEVMxRobustness is SetupScript {
-    RobustnessAppGateway robustnessAppGateway;
+contract RunEVMxWrite is SetupScript {
+    WriteAppGateway robustnessAppGateway;
     address opSepForwarder;
     address arbSepForwarder;
 
@@ -92,7 +92,7 @@ contract RunEVMxRobustness is SetupScript {
 
     // Initialize contract references
     function init() internal {
-        robustnessAppGateway = RobustnessAppGateway(appGatewayAddress);
+        robustnessAppGateway = WriteAppGateway(appGatewayAddress);
     }
 
     function executeScriptSpecificLogic() internal override {
