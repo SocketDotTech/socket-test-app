@@ -47,7 +47,7 @@ contract RunEVMxWrite is SetupScript {
     function checkResults() internal {
         vm.createSelectFork(rpcEVMx);
         console.log("\n----- RESULTS -----");
-        // TODO: Add check for Counter value
+        // TODO: Add check for Counter value and/or onchain event
     }
 
     // Initialize contract references

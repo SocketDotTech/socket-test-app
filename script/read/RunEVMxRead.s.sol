@@ -43,6 +43,7 @@ contract RunEVMxRead is SetupScript {
 
     function checkResults() internal view {
         console.log("\n----- RESULTS -----");
+        // TODO: monitor events as Foundry reads are not reliable
 
         // Check values array
         console.log("Values array:");
