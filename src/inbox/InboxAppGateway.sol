@@ -3,22 +3,7 @@ pragma solidity ^0.8.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./Inbox.sol";
-
-interface IInboxDeployer {
-    function inbox() external pure returns (bytes32 bytecode);
-
-    function forwarderAddresses(bytes32 contractId_, uint32 chainSlug_)
-        external
-        view
-        returns (address forwarderAddress);
-}
-
-interface IInbox {
-    function value() external returns (uint256);
-    function increaseOnGateway(uint256 value_) external returns (bytes32);
-    function propagateToAnother(uint32 targetChain) external returns (bytes32);
-    function updateFromGateway(uint256 value) external;
-}
+import "./IInbox.sol";
 
 contract InboxAppGateway is AppGatewayBase {
     bytes32 public inbox = _createContractId("inbox");
@@ -43,8 +28,7 @@ contract InboxAppGateway is AppGatewayBase {
     }
 
     function updateOnchain(uint32 targetChain) public {
-        address inboxForwarderAddress =
-            IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+        address inboxForwarderAddress = this.forwarderAddresses(this.inbox(), targetChain);
         IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
@@ -55,8 +39,7 @@ contract InboxAppGateway is AppGatewayBase {
             valueOnGateway += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
-            address inboxForwarderAddress =
-                IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+            address inboxForwarderAddress = this.forwarderAddresses(this.inbox(), targetChain);
             IInbox(inboxForwarderAddress).updateFromGateway(valueOnchain);
         } else {
             revert("InboxGateway: invalid message type");

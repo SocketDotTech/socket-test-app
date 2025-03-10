@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
-import {InboxAppGateway, IInbox} from "../../src/inbox/InboxAppGateway.sol";
+import {InboxAppGateway} from "../../src/inbox/InboxAppGateway.sol";
+import {IInbox} from "../../src/inbox/IInbox.sol";
 
 contract RunEVMxInbox is SetupScript {
     InboxAppGateway inboxAppGateway;
