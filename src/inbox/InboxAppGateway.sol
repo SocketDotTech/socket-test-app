@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
+
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
+import "./Inbox.sol";
 
 interface IInboxDeployer {
     function inbox() external pure returns (bytes32 bytecode);
 
-    function forwarderAddresses(
-        bytes32 contractId_,
-        uint32 chainSlug_
-    ) external view returns (address forwarderAddress);
+    function forwarderAddresses(bytes32 contractId_, uint32 chainSlug_)
+        external
+        view
+        returns (address forwarderAddress);
 }
 
 interface IInbox {
@@ -19,6 +21,7 @@ interface IInbox {
 }
 
 contract InboxAppGateway is AppGatewayBase {
+    bytes32 public inbox = _createContractId("inbox");
     uint256 public valueOnGateway;
     address deployerAddress;
 
@@ -26,35 +29,34 @@ contract InboxAppGateway is AppGatewayBase {
     uint32 public constant INCREASE_ON_GATEWAY = 1;
     uint32 public constant PROPAGATE_TO_ANOTHER = 2;
 
-    constructor(
-        address addressResolver_,
-        address deployerContract_,
-        address auctionManager_,
-        Fees memory fees_
-    ) AppGatewayBase(addressResolver_, auctionManager_) {
-        addressResolver__.setContractsToGateways(deployerContract_);
-        deployerAddress = deployerContract_;
+    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+        creationCodeWithArgs[inbox] = abi.encodePacked(type(Inbox).creationCode);
         _setOverrides(fees_);
     }
 
+    function deployContracts(uint32 chainSlug_) external async {
+        _deploy(inbox, chainSlug_, IsPlug.YES);
+    }
+
+    function initialize(uint32) public pure override {
+        return;
+    }
+
     function updateOnchain(uint32 targetChain) public {
-        address inboxForwarderAddress = IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+        address inboxForwarderAddress =
+            IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
         IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
-    function callFromInbox(
-        uint32,
-        address,
-        bytes calldata payload_,
-        bytes32
-    ) external override onlyWatcherPrecompile {
+    function callFromChain(uint32, address, bytes calldata payload_, bytes32) external override onlyWatcherPrecompile {
         (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
         if (msgType == INCREASE_ON_GATEWAY) {
             uint256 valueOnchain = abi.decode(payload, (uint256));
             valueOnGateway += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
-            address inboxForwarderAddress = IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+            address inboxForwarderAddress =
+                IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
             IInbox(inboxForwarderAddress).updateFromGateway(valueOnchain);
         } else {
             revert("InboxGateway: invalid message type");

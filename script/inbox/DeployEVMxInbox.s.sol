@@ -4,29 +4,25 @@ pragma solidity ^0.8.0;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
-import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
+import {ETH_ADDRESS} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
 
 import {InboxAppGateway} from "../../src/inbox/InboxAppGateway.sol";
-import {InboxDeployer} from "../../src/inbox/InboxDeployer.sol";
 
 contract DeployEVMxContracts is Script {
     function run() external {
         address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
-        address auctionManager = vm.envAddress("AUCTION_MANAGER");
         string memory rpc = vm.envString("EVMX_RPC");
         vm.createSelectFork(rpc);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        Fees memory fees = Fees({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
+        Fees memory fees = Fees({feePoolChain: 421614, feePoolToken: ETH_ADDRESS, amount: 0.0005 ether});
 
-        InboxDeployer deployer = new InboxDeployer(addressResolver, auctionManager, FAST, fees);
-
-        InboxAppGateway gateway = new InboxAppGateway(addressResolver, address(deployer), auctionManager, fees);
+        InboxAppGateway appGateway = new InboxAppGateway(addressResolver, fees);
 
         console.log("Contracts deployed:");
-        console.log("Deployer:", address(deployer));
-        console.log("AppGateway:", address(gateway));
+        console.log("AppGateway:", address(appGateway));
+        console.log("See AppGateway on EVMx: https://evmx.cloud.blockscout.com/address/%s", address(appGateway));
     }
 }

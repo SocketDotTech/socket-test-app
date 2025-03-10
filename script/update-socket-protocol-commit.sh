@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Check if there are modified or staged files
-if [[ -n $(git status --porcelain) ]]; then
-  echo "Error: You have uncommitted changes. Commit or stash them before running this script."
+# Check for modified or staged files, but ignore untracked files
+if [[ -n $(git status --porcelain | grep '^[ MRAUCD]') ]]; then
+  echo "Error: You have modified or staged files. Commit or stash them before running this script."
   exit 1
 fi
 

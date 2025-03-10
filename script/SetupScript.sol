@@ -3,18 +3,15 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {DepositFees} from "socket-protocol/script/PayFeesInArbitrumETH.s.sol";
+import {DepositFees} from "socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol";
 import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
 import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/FeesPlug.sol";
 import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
-import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/app-gateway/FeesManager.sol";
+import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/FeesManager.sol";
 
 interface IAppGateway {
-    function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address recipient) external;
-}
-
-interface IDeployer {
     function deployContracts(uint32 chainId) external;
+    function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address recipient) external;
 }
 
 abstract contract SetupScript is Script {
@@ -22,16 +19,15 @@ abstract contract SetupScript is Script {
     string rpcEVMx = vm.envString("EVMX_RPC");
     string rpcArbSepolia = vm.envString("ARBITRUM_SEPOLIA_RPC");
     address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
-    address auctionManager = vm.envAddress("AUCTION_MANAGER");
     address feesPlugArbSepolia = vm.envAddress("ARBITRUM_FEES_PLUG");
     address feesManagerAddress = vm.envAddress("FEES_MANAGER");
     uint256 privateKey = vm.envUint("PRIVATE_KEY");
-    address deployerAddress = vm.envAddress("DEPLOYER");
     address appGatewayAddress = vm.envAddress("APP_GATEWAY");
 
     // ----- SCRIPT VARIABLES -----
-    uint32 arbSepChainId = 411614;
+    uint32 arbSepChainId = 421614;
     uint32 opSepChainId = 11155420;
+    uint32[2] chainIds = [opSepChainId, arbSepChainId];
 
     Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
@@ -91,12 +87,12 @@ abstract contract SetupScript is Script {
         }
     }
 
-    function deployOnchainContracts(uint32[] memory chainIds) internal {
+    function _deployOnchainContracts() internal {
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
 
         for (uint256 i = 0; i < chainIds.length; i++) {
-            IDeployer(deployer()).deployContracts(chainIds[i]);
+            IAppGateway(appGateway()).deployContracts(chainIds[i]);
         }
 
         vm.stopBroadcast();
@@ -105,7 +101,6 @@ abstract contract SetupScript is Script {
 
     // Abstract functions to be implemented by child contracts
     function appGateway() internal view virtual returns (address);
-    function deployer() internal view virtual returns (address);
 
     // Standard flow
     // Each implementation script will call these functions

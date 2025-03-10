@@ -1,5 +1,3 @@
-ds-test/=lib/socket-protocol/lib/forge-std/lib/ds-test/src/
-forge-std/=lib/forge-std/src/
+forge-std/=lib/socket-protocol/lib/forge-std/src/
 socket-protocol/=lib/socket-protocol/
 solady/=lib/socket-protocol/lib/solady/src/
-solmate/=lib/socket-protocol/lib/solmate/src/
