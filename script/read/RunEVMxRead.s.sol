@@ -26,24 +26,22 @@ contract RunEVMxRead is SetupScript {
     function runAllTriggers() internal {
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
-
         console.log("Running all trigger functions...");
 
         // 1. Trigger Parallel Read
         console.log("triggerParallelRead...");
         readAppGateway.triggerParallelRead(opSepForwarder);
+        checkResults();
 
         // 2. Trigger Alternating Read between chains
         console.log("triggerAltRead...");
         readAppGateway.triggerAltRead(opSepForwarder, arbSepForwarder);
-
+        checkResults();
         vm.stopBroadcast();
         console.log("All triggers executed successfully");
     }
 
-    function checkResults() internal {
-        vm.createSelectFork(rpcEVMx);
-
+    function checkResults() internal view {
         console.log("\n----- RESULTS -----");
 
         // Check values array
@@ -67,7 +65,6 @@ contract RunEVMxRead is SetupScript {
         init();
         getForwarderAddresses();
         runAllTriggers();
-        checkResults();
     }
 
     function run() external {
