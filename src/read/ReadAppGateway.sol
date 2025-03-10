@@ -11,11 +11,14 @@ contract ReadAppGateway is AppGatewayBase {
     bytes32 public multichain = _createContractId("ReadMultichain");
     uint256[] public values;
 
+    error OutOfBounds();
+
     event ValueRead(address instance, uint256 index, uint256 value);
 
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(ReadMultichain).creationCode);
         _setOverrides(fees_);
+        values = new uint256[](10);
     }
 
     function deployContracts(uint32 chainSlug_) external async {
@@ -51,10 +54,7 @@ contract ReadAppGateway is AppGatewayBase {
         (uint256 index_, address instance) = abi.decode(data, (uint256, address));
         uint256 value_ = abi.decode(returnData, (uint256));
 
-        while (values.length <= index_) {
-            values.push(0);
-        }
-
+        if (index_ >= 10) revert OutOfBounds();
         values[index_] = value_;
         emit ValueRead(instance, index_, value_);
     }
