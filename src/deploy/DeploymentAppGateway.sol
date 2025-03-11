@@ -43,6 +43,46 @@ contract DeploymentAppGateway is AppGatewayBase {
         PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]).initialise(10);
     }
 
+    function contractValidation(uint32 chainSlug_) external async {
+        address noPlugNoInititializeForwarder = forwarderAddresses[noPlugNoInititialize][chainSlug_];
+        address noPlugInitializeForwarder = forwarderAddresses[noPlugInitialize][chainSlug_];
+
+        NoPlugNoInititialize _noPlugNoInititialize = NoPlugNoInititialize(noPlugNoInititializeForwarder);
+        NoPlugInitialize _noPlugInitialize = NoPlugInitialize(noPlugInitializeForwarder);
+        PlugNoInitialize _plugNoInitialize = PlugNoInitialize(forwarderAddresses[plugNoInitialize][chainSlug_]);
+        PlugInitialize _plugInitialize = PlugInitialize(forwarderAddresses[plugInitialize][chainSlug_]);
+        PlugInitializeTwice _plugInitializeTwice =
+            PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]);
+        PlugNoInitInitialize _plugNoInitInitialize =
+            PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]);
+
+        // NoPlugNoInititialize checks
+        require(_noPlugNoInititialize.variable() == 0, "variable should be 0");
+        (bool success,) = noPlugNoInititializeForwarder.call(abi.encodeWithSignature("socket__()"));
+        require(!success, "Should revert on socket__()");
+
+        // NoPlugInitialize checks
+        require(_noPlugInitialize.variable() == 10, "variable should be 10");
+        (success,) = noPlugInitializeForwarder.call(abi.encodeWithSignature("socket__()"));
+        require(!success, "Should revert on socket__()");
+
+        // PlugNoInitialize checks
+        require(_plugNoInitialize.variable() == 0, "variable should be 0");
+        require(address(_plugNoInitialize.socket__()) != address(0), "Should return socket address");
+
+        // PlugInitialize checks
+        require(_plugInitialize.variable() == 10, "variable should be 10");
+        require(address(_plugInitialize.socket__()) != address(0), "Should return socket address");
+
+        // PlugInitializeTwice checks
+        require(address(_plugInitializeTwice.socket__()) != address(0), "Should return socket address");
+        require(_plugInitializeTwice.variable() == 20, "variable should be 20");
+
+        // PlugNoInitInitialize checks
+        require(_plugNoInitInitialize.variable() == 10, "variable should be 10");
+        require(address(_plugNoInitInitialize.socket__()) != address(0), "Should return socket address");
+    }
+
     function setFees(Fees memory fees_) public {
         fees = fees_;
     }

@@ -154,13 +154,13 @@ forge script script/write/RunEVMxWrite.s.sol --broadcast --sig "withdrawAppFees(
 Follow these steps to deploy and run the EVMx Write tests.
 
 ### 1. **Deploy the EVMx Deploy Tests Script**
-Run the following command to deploy the EVMx Write tests script:
+Run the following command to deploy the EVMx Deploy tests script:
 ```bash
 forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the Contract**
-Verify the `WriteAppGateway` contract on Blockscout:
+Verify the `DeployAppGateway` contract on Blockscout:
 ```bash
 forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/deploy/DeploymentAppGateway.sol:DeploymentAppGateway
 ```

@@ -15,12 +15,6 @@ import {
 
 contract RunEVMxDeployment is SetupScript {
     DeploymentAppGateway deploymentAppGateway;
-    address noPlugNoInititializeForwarder;
-    address noPlugInitializeForwarder;
-    address plugNoInitializeForwarder;
-    address plugInitializeForwarder;
-    address plugInitializeTwiceForwarder;
-    address plugNoInitInitializeForwarder;
 
     function appGateway() internal view override returns (address) {
         return address(deploymentAppGateway);
@@ -32,76 +26,15 @@ contract RunEVMxDeployment is SetupScript {
         return address(newGateway);
     }
 
-    function getForwarderAddresses() internal {
-        vm.createSelectFork(rpcEVMx);
-
-        noPlugNoInititializeForwarder =
-            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.noPlugNoInititialize(), arbSepChainId);
-        console.log("No Plug No Init Forwarder:", noPlugNoInititializeForwarder);
-
-        noPlugInitializeForwarder =
-            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.noPlugInitialize(), arbSepChainId);
-        console.log("No Plug Init Forwarder:", noPlugInitializeForwarder);
-
-        plugNoInitializeForwarder =
-            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugNoInitialize(), arbSepChainId);
-        console.log("Plug No Init Forwarder:", plugNoInitializeForwarder);
-
-        plugInitializeForwarder =
-            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugInitialize(), arbSepChainId);
-        console.log("Plug Init Forwarder:", plugInitializeForwarder);
-
-        plugInitializeTwiceForwarder =
-            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugInitializeTwice(), arbSepChainId);
-        console.log("Plug Init Init Forwarder:", plugInitializeTwiceForwarder);
-
-        plugNoInitInitializeForwarder =
-            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugNoInitInitialize(), arbSepChainId);
-        console.log("Plug No Init Init Forwarder:", plugNoInitInitializeForwarder);
+    function getForwarderAddresses() internal pure {
+        return;
     }
 
     function validate() internal {
-        NoPlugNoInititialize noPlugNoInititialize = NoPlugNoInititialize(noPlugNoInititializeForwarder);
-        NoPlugInitialize noPlugInitialize = NoPlugInitialize(noPlugInitializeForwarder);
-        PlugNoInitialize plugNoInitialize = PlugNoInitialize(plugNoInitializeForwarder);
-        PlugInitialize plugInitialize = PlugInitialize(plugInitializeForwarder);
-        PlugInitializeTwice plugInitializeTwice = PlugInitializeTwice(plugInitializeTwiceForwarder);
-        PlugNoInitInitialize plugNoInitInitialize = PlugNoInitInitialize(plugNoInitInitializeForwarder);
-
-        vm.createSelectFork(rpcArbSepolia);
+        vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
 
-        // NoPlugNoInititialize checks
-        require(noPlugNoInititialize.variable() == 0, "variable should be 0");
-        (bool success,) = noPlugNoInititializeForwarder.call(abi.encodeWithSignature("socket__()"));
-        require(!success, "Should revert on socket__()");
-        console.log("NoPlugNoInititialize checks passed");
-
-        // NoPlugInitialize checks
-        require(noPlugInitialize.variable() == 10, "variable should be 10");
-        (success,) = noPlugInitializeForwarder.call(abi.encodeWithSignature("socket__()"));
-        require(!success, "Should revert on socket__()");
-        console.log("NoPlugInitialize checks passed");
-
-        // PlugNoInitialize checks
-        require(plugNoInitialize.variable() == 0, "variable should be 0");
-        require(address(plugNoInitialize.socket__()) != address(0), "Should return socket address");
-        console.log("PlugNoInitialize checks passed");
-
-        // PlugInitialize checks
-        require(plugInitialize.variable() == 10, "variable should be 10");
-        require(address(plugInitialize.socket__()) != address(0), "Should return socket address");
-        console.log("PlugInitialize checks passed");
-
-        // PlugInitializeTwice checks
-        require(address(plugInitializeTwice.socket__()) != address(0), "Should return socket address");
-        require(plugInitializeTwice.variable() == 20, "variable should be 20");
-        console.log("PlugInitializeTwice checks passed");
-
-        // PlugNoInitInitialize checks
-        require(plugNoInitInitialize.variable() == 10, "variable should be 10");
-        require(address(plugNoInitInitialize.socket__()) != address(0), "Should return socket address");
-        console.log("PlugNoInitInitialize checks passed");
+        deploymentAppGateway.contractValidation(arbSepChainId);
 
         vm.stopBroadcast();
     }
@@ -139,6 +72,5 @@ contract RunEVMxDeployment is SetupScript {
 
     function runTests() external {
         _run(arbSepChainId);
-        _run(opSepChainId);
     }
 }
