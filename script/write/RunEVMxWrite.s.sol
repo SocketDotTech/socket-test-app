@@ -78,6 +78,11 @@ contract RunEVMxWrite is SetupScript {
         _deployAppGateway();
     }
 
+    function withdrawAppFees() external {
+        init();
+        _withdrawAppFees(arbSepChainId);
+    }
+
     function deployOnchainContracts() external {
         init();
         _deployOnchainContracts();

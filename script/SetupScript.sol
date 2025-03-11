@@ -48,7 +48,7 @@ abstract contract SetupScript is Script {
         console.log("Available fees:", availableFees);
     }
 
-    function withdrawAppFees(uint32 chainId) internal {
+    function _withdrawAppFees(uint32 chainId) internal {
         // EVMX Check available fees
         vm.createSelectFork(rpcEVMx);
 
@@ -61,7 +61,7 @@ abstract contract SetupScript is Script {
 
             // Gas price from Arbitrum
             uint256 arbitrumGasPrice = block.basefee + 0.1 gwei; // With buffer
-            uint256 gasLimit = 5_000_000; // Estimate
+            uint256 gasLimit = 4_000_000; // Estimate
             uint256 estimatedGasCost = gasLimit * arbitrumGasPrice;
 
             console.log("Arbitrum gas price (wei):", arbitrumGasPrice);
@@ -130,7 +130,6 @@ abstract contract SetupScript is Script {
 
         if (availableFees > 0) {
             executeScriptSpecificLogic();
-            withdrawAppFees(chainId);
         } else {
             console.log("NO AVAILABLE FEES - Please deposit fees before running this script");
         }

@@ -41,6 +41,11 @@ Finally, run the EVMx Read script:
 forge script script/read/RunEVMxRead.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy
 ```
 
+### 6. Withdraw funds
+```bash
+forge script script/inbox/RunEVMxRead.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
+
 # Deployment Steps for EVMx Inbox Tests
 
 Follow these steps to deploy and run the EVMx Inbox tests.
@@ -92,6 +97,11 @@ forge script script/inbox/RunEVMxInbox.s.sol --broadcast --legacy --with-gas-pri
 forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToOnchain()"
 ```
 
+### 6. Withdraw funds
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
+
 # Deployment Steps for EVMx Write Tests
 
 Follow these steps to deploy and run the EVMx Write tests.
@@ -133,4 +143,9 @@ forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier
 Finally, run the EVMx Write script:
 ```bash
 forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy
+```
+
+### 6. Withdraw funds
+```bash
+forge script script/inbox/RunEVMxWrite.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
