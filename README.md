@@ -5,7 +5,7 @@ Follow these steps to deploy and run the EVMx Read tests.
 ### 1. **Deploy the EVMx Read Tests Script**
 Run the following command to deploy the EVMx Read tests script:
 ```bash
-forge script script/read/DeployEVMxReadTests.sol --broadcast --legacy --with-gas-price 0
+forge script script/read/DeployEVMxReadTests.s.sol --broadcast --legacy --with-gas-price 0
 ```
 
 ### 1a. **Verify the EVMx Contract**
@@ -48,7 +48,7 @@ Follow these steps to deploy and run the EVMx Inbox tests.
 ### 1. **Deploy the EVMx Inbox Tests Script**
 Run the following command to deploy the EVMx Inbox tests script:
 ```bash
-forge script script/inbox/DeployEVMxInboxTests.sol --broadcast --legacy --with-gas-price 0
+forge script script/inbox/DeployEVMxInboxTests.s.sol --broadcast --legacy --with-gas-price 0
 ```
 
 ### 1a. **Verify the EVMx Contract**
@@ -75,7 +75,7 @@ forge script script/inbox/RunEVMxInbox.s.sol --broadcast --skip-simulation --wit
 ### 4a. **Verify the Onchain Contract**
 Verify the `InboxMultichain` contract on Arbitrum Sepolia Blockscout:
 ```bash
-forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/inbox/InboxMultichain.sol:InboxMultichain
+forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/inbox/Inbox.sol:Inbox
 ```
 
 ### 5. **Run EVMx Inbox Script**
@@ -91,7 +91,7 @@ Follow these steps to deploy and run the EVMx Write tests.
 ### 1. **Deploy the EVMx Write Tests Script**
 Run the following command to deploy the EVMx Write tests script:
 ```bash
-forge script script/write/DeployEVMxWriteTests.sol --broadcast --legacy --with-gas-price 0
+forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --legacy --with-gas-price 0
 ```
 
 ### 1a. **Verify the Contract**
