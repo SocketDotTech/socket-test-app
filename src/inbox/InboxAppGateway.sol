@@ -27,8 +27,8 @@ contract InboxAppGateway is AppGatewayBase {
         return;
     }
 
-    function updateOnchain(uint32 targetChain) public {
-        address inboxForwarderAddress = this.forwarderAddresses(this.inbox(), targetChain);
+    function updateOnchain(uint32 targetChain) public async {
+        address inboxForwarderAddress = forwarderAddresses[inbox][targetChain];
         IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
@@ -39,7 +39,7 @@ contract InboxAppGateway is AppGatewayBase {
             valueOnGateway += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
-            address inboxForwarderAddress = this.forwarderAddresses(this.inbox(), targetChain);
+            address inboxForwarderAddress = forwarderAddresses[inbox][targetChain];
             IInbox(inboxForwarderAddress).updateFromGateway(valueOnchain);
         } else {
             revert("InboxGateway: invalid message type");
