@@ -32,7 +32,12 @@ contract InboxAppGateway is AppGatewayBase {
         IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
-    function callFromChain(uint32, address, bytes calldata payload_, bytes32) external override onlyWatcherPrecompile {
+    function callFromChain(uint32, address, bytes calldata payload_, bytes32)
+        external
+        override
+        async
+        onlyWatcherPrecompile
+    {
         (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
         if (msgType == INCREASE_ON_GATEWAY) {
             uint256 valueOnchain = abi.decode(payload, (uint256));
