@@ -112,6 +112,7 @@ abstract contract SetupScript is Script {
 
         console.log("New AppGateway deployed at:", newAppGateway);
         console.log("See AppGateway on EVMx: https://evmx.cloud.blockscout.com/address/%s", newAppGateway);
+        console.log("Set APP_GATEWAY environment variable to:", newAppGateway);
 
         return newAppGateway;
     }

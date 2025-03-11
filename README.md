@@ -5,7 +5,7 @@ Follow these steps to deploy and run the EVMx Read tests.
 ### 1. **Deploy the EVMx Read Tests Script**
 Run the following command to deploy the EVMx Read tests script:
 ```bash
-forge script script/read/DeployEVMxReadTests.s.sol --broadcast --legacy --with-gas-price 0
+forge script script/read/RunEVMxRead.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the EVMx Contract**
@@ -48,7 +48,7 @@ Follow these steps to deploy and run the EVMx Inbox tests.
 ### 1. **Deploy the EVMx Inbox Tests Script**
 Run the following command to deploy the EVMx Inbox tests script:
 ```bash
-forge script script/inbox/DeployEVMxInboxTests.s.sol --broadcast --legacy --with-gas-price 0
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the EVMx Contract**
@@ -99,7 +99,7 @@ Follow these steps to deploy and run the EVMx Write tests.
 ### 1. **Deploy the EVMx Write Tests Script**
 Run the following command to deploy the EVMx Write tests script:
 ```bash
-forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --legacy --with-gas-price 0 --sig "onchainToEVMx()"
+forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the Contract**

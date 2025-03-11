@@ -82,8 +82,7 @@ contract RunEVMxInbox is SetupScript {
     }
 
     function deployAppGateway() external {
-        address newGateway = _deployAppGateway();
-        console.log("AppGateway deployed. Set APP_GATEWAY environment variable to:", newGateway);
+        _deployAppGateway();
     }
 
     function deployOnchainContracts() external {

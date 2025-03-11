@@ -14,6 +14,12 @@ contract RunEVMxWrite is SetupScript {
         return address(writeAppGateway);
     }
 
+    function deployAppGatewayContract() internal override returns (address) {
+        // Deploy WriteAppGateway
+        WriteAppGateway newGateway = new WriteAppGateway(addressResolver, deployFees);
+        return address(newGateway);
+    }
+
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
         opSepForwarder = writeAppGateway.forwarderAddresses(writeAppGateway.multichain(), opSepChainId);
@@ -62,12 +68,22 @@ contract RunEVMxWrite is SetupScript {
         checkResults();
     }
 
-    function run() external {
-        _run(arbSepChainId);
+    function run() external pure {
+        console.log(
+            "Please call one of these external functions: deployAppGateway(), deployOnchainContracts(), or runTriggers()"
+        );
+    }
+
+    function deployAppGateway() external {
+        _deployAppGateway();
     }
 
     function deployOnchainContracts() external {
         init();
         _deployOnchainContracts();
+    }
+
+    function runTriggers() external {
+        _run(arbSepChainId);
     }
 }

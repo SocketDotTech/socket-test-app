@@ -26,6 +26,12 @@ contract RunEVMxDeploymentMistakes is SetupScript {
         return address(mistakesAppGateway);
     }
 
+    function deployAppGatewayContract() internal override returns (address) {
+        // Deploy DeploymentMistakesAppGateway
+        DeploymentMistakesAppGateway newGateway = new DeploymentMistakesAppGateway(addressResolver, deployFees);
+        return address(newGateway);
+    }
+
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
 
@@ -111,12 +117,22 @@ contract RunEVMxDeploymentMistakes is SetupScript {
         validateMistakes();
     }
 
-    function run() external {
-        _run(arbSepChainId);
+    function run() external pure {
+        console.log(
+            "Please call one of these external functions: deployAppGateway(), deployOnchainContracts(), or runTests()"
+        );
+    }
+
+    function deployAppGateway() external {
+        _deployAppGateway();
     }
 
     function deployOnchainContracts() external {
         init();
         _deployOnchainContracts();
+    }
+
+    function runTests() external {
+        _run(arbSepChainId);
     }
 }
