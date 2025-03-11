@@ -2,9 +2,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "./DeployOnchainMistakes.sol";
+import "./DeployOnchain.sol";
 
-contract DeploymentMistakesAppGateway is AppGatewayBase {
+contract DeploymentAppGateway is AppGatewayBase {
     bytes32 public noPlugNoInititialize = _createContractId("noPlugNoInititialize");
     bytes32 public noPlugInitialize = _createContractId("noPlugInitialize");
     bytes32 public plugNoInitialize = _createContractId("plugNoInitialize");

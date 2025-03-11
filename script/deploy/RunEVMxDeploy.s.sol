@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
-import {DeploymentMistakesAppGateway} from "../../src/deployment-mistakes/DeploymentMistakesAppGateway.sol";
+import {DeploymentAppGateway} from "../../src/deploy/DeploymentAppGateway.sol";
 import {
     NoPlugNoInititialize,
     NoPlugInitialize,
@@ -11,10 +11,10 @@ import {
     PlugInitialize,
     PlugInitializeTwice,
     PlugNoInitInitialize
-} from "../../src/deployment-mistakes/DeployOnchainMistakes.sol";
+} from "../../src/deploy/DeployOnchain.sol";
 
-contract RunEVMxDeploymentMistakes is SetupScript {
-    DeploymentMistakesAppGateway mistakesAppGateway;
+contract RunEVMxDeployment is SetupScript {
+    DeploymentAppGateway deploymentAppGateway;
     address noPlugNoInititializeForwarder;
     address noPlugInitializeForwarder;
     address plugNoInitializeForwarder;
@@ -23,12 +23,12 @@ contract RunEVMxDeploymentMistakes is SetupScript {
     address plugNoInitInitializeForwarder;
 
     function appGateway() internal view override returns (address) {
-        return address(mistakesAppGateway);
+        return address(deploymentAppGateway);
     }
 
     function deployAppGatewayContract() internal override returns (address) {
-        // Deploy DeploymentMistakesAppGateway
-        DeploymentMistakesAppGateway newGateway = new DeploymentMistakesAppGateway(addressResolver, deployFees);
+        // Deploy DeploymentAppGateway
+        DeploymentAppGateway newGateway = new DeploymentAppGateway(addressResolver, deployFees);
         return address(newGateway);
     }
 
@@ -36,31 +36,31 @@ contract RunEVMxDeploymentMistakes is SetupScript {
         vm.createSelectFork(rpcEVMx);
 
         noPlugNoInititializeForwarder =
-            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.noPlugNoInititialize(), arbSepChainId);
+            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.noPlugNoInititialize(), arbSepChainId);
         console.log("No Plug No Init Forwarder:", noPlugNoInititializeForwarder);
 
         noPlugInitializeForwarder =
-            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.noPlugInitialize(), arbSepChainId);
+            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.noPlugInitialize(), arbSepChainId);
         console.log("No Plug Init Forwarder:", noPlugInitializeForwarder);
 
         plugNoInitializeForwarder =
-            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugNoInitialize(), arbSepChainId);
+            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugNoInitialize(), arbSepChainId);
         console.log("Plug No Init Forwarder:", plugNoInitializeForwarder);
 
         plugInitializeForwarder =
-            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugInitialize(), arbSepChainId);
+            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugInitialize(), arbSepChainId);
         console.log("Plug Init Forwarder:", plugInitializeForwarder);
 
         plugInitializeTwiceForwarder =
-            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugInitializeTwice(), arbSepChainId);
+            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugInitializeTwice(), arbSepChainId);
         console.log("Plug Init Init Forwarder:", plugInitializeTwiceForwarder);
 
         plugNoInitInitializeForwarder =
-            mistakesAppGateway.forwarderAddresses(mistakesAppGateway.plugNoInitInitialize(), arbSepChainId);
+            deploymentAppGateway.forwarderAddresses(deploymentAppGateway.plugNoInitInitialize(), arbSepChainId);
         console.log("Plug No Init Init Forwarder:", plugNoInitInitializeForwarder);
     }
 
-    function validateMistakes() internal {
+    function validate() internal {
         NoPlugNoInititialize noPlugNoInititialize = NoPlugNoInititialize(noPlugNoInititializeForwarder);
         NoPlugInitialize noPlugInitialize = NoPlugInitialize(noPlugInitializeForwarder);
         PlugNoInitialize plugNoInitialize = PlugNoInitialize(plugNoInitializeForwarder);
@@ -108,13 +108,13 @@ contract RunEVMxDeploymentMistakes is SetupScript {
 
     // Initialize contract references
     function init() internal {
-        mistakesAppGateway = DeploymentMistakesAppGateway(appGatewayAddress);
+        deploymentAppGateway = DeploymentAppGateway(appGatewayAddress);
     }
 
     function executeScriptSpecificLogic() internal override {
         init();
         getForwarderAddresses();
-        validateMistakes();
+        validate();
     }
 
     function run() external pure {
@@ -139,5 +139,6 @@ contract RunEVMxDeploymentMistakes is SetupScript {
 
     function runTests() external {
         _run(arbSepChainId);
+        _run(opSepChainId);
     }
 }
