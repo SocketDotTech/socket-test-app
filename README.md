@@ -91,7 +91,15 @@ Follow these steps to deploy and run the EVMx Write tests.
 ### 1. **Deploy the EVMx Write Tests Script**
 Run the following command to deploy the EVMx Write tests script:
 ```bash
-forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --legacy --with-gas-price 0
+forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --sig "onchainToEVMx()"
+```
+
+```bash
+forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --legacy --with-gas-price 0 --sig "eVMxToOnchain()"
+```
+
+```bash
+forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --sig "onchainToOnchain()"
 ```
 
 ### 1a. **Verify the Contract**

@@ -10,6 +10,9 @@ contract RunEVMxInbox is SetupScript {
     InboxAppGateway inboxAppGateway;
     address opSepForwarder;
     address arbSepForwarder;
+    address opSepInboxAddress;
+    address arbSepInboxAddress;
+    uint8 step;
 
     function appGateway() internal view override returns (address) {
         return address(inboxAppGateway);
@@ -25,39 +28,39 @@ contract RunEVMxInbox is SetupScript {
     }
 
     function inboxTransactions() internal {
-        address opSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), opSepChainId);
-        address arbSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), arbSepChainId);
+        // TODO: Emit event on each update to easily track and update
+        if (step == 1) {
+            vm.createSelectFork(rpcArbSepolia);
+            vm.startBroadcast(privateKey);
 
-        vm.createSelectFork(rpcArbSepolia);
-        vm.startBroadcast(privateKey);
+            IInbox(arbSepInboxAddress).increaseOnGateway(5);
 
-        IInbox(arbSepInboxAddress).increaseOnGateway(5);
+            vm.stopBroadcast();
+        } else if (step == 2) {
+            // TODO: Emit event on each update to easily track and update
+            vm.createSelectFork(rpcEVMx);
+            vm.startBroadcast(privateKey);
 
-        vm.stopBroadcast();
-        vm.createSelectFork(rpcEVMx);
-        vm.startBroadcast(privateKey);
+            inboxAppGateway.updateOnchain(opSepChainId);
 
-        // TODO: Wait for event? or wait until read is 5 not sure how to handle this on foundry script
-        console.log(inboxAppGateway.valueOnGateway());
-        inboxAppGateway.updateOnchain(opSepChainId);
+            vm.stopBroadcast();
+        } else if (step == 3) {
+            // TODO: Emit event on each update to easily track and update
+            vm.createSelectFork(rpcOPSepolia);
+            vm.startBroadcast(privateKey);
 
-        vm.stopBroadcast();
-        vm.createSelectFork(rpcOPSepolia);
-        vm.startBroadcast(privateKey);
+            IInbox(opSepInboxAddress).propagateToAnother(arbSepChainId);
 
-        // TODO: Wait for event? or wait until read is 5 not sure how to handle this on foundry script
-        console.log(IInbox(opSepInboxAddress).value());
-        IInbox(opSepInboxAddress).propagateToAnother(arbSepChainId);
-        // TODO: Wait for event? or wait until read is 5 not sure how to handle this on foundry script
-        console.log(IInbox(arbSepInboxAddress).value());
-
-        vm.stopBroadcast();
+            vm.stopBroadcast();
+        }
         console.log("All inbox transactions executed successfully");
     }
 
     // Initialize contract references
     function init() internal {
         inboxAppGateway = InboxAppGateway(appGatewayAddress);
+        opSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), opSepChainId);
+        arbSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), arbSepChainId);
     }
 
     function executeScriptSpecificLogic() internal override {
@@ -66,12 +69,29 @@ contract RunEVMxInbox is SetupScript {
         inboxTransactions();
     }
 
-    function run() external {
-        _run(arbSepChainId);
+    function run() external pure {
+        console.log(
+            "Please call one of these external functions: onchainToEVMx(), eVMxToOnchain(), or onchainToOnchain()"
+        );
     }
 
     function deployOnchainContracts() external {
         init();
         _deployOnchainContracts();
+    }
+
+    function onchainToEVMx() external {
+        step = 1;
+        _run(arbSepChainId);
+    }
+
+    function eVMxToOnchain() external {
+        step = 2;
+        _run(arbSepChainId);
+    }
+
+    function onchainToOnchain() external {
+        step = 3;
+        _run(arbSepChainId);
     }
 }
