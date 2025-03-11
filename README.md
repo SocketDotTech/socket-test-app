@@ -81,15 +81,15 @@ forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier
 ### 5. **Run EVMx Inbox Script**
 Finally, run the EVMx Inbox script:
 ```bash
-forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --sig "onchainToEVMx()"
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToEVMx()"
 ```
 
 ```bash
-forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --legacy --with-gas-price 0 --sig "eVMxToOnchain()"
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --legacy --with-gas-price 0 --sig "eVMxToOnchain()"
 ```
 
 ```bash
-forge script script/write/DeployEVMxWriteTests.s.sol --broadcast --sig "onchainToOnchain()"
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToOnchain()"
 ```
 
 # Deployment Steps for EVMx Write Tests

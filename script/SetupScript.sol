@@ -31,6 +31,7 @@ abstract contract SetupScript is Script {
     uint32[2] chainIds = [opSepChainId, arbSepChainId];
 
     Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
+    Fees deployFees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.0005 ether});
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
     FeesPlug feesPlug = FeesPlug(payable(feesPlugArbSepolia));
 
@@ -100,8 +101,26 @@ abstract contract SetupScript is Script {
         console.log("Contracts deployed");
     }
 
+    // Deploy new AppGateway on EVMx
+    function _deployAppGateway() internal virtual returns (address newAppGateway) {
+        vm.createSelectFork(rpcEVMx);
+        vm.startBroadcast(privateKey);
+
+        newAppGateway = deployAppGatewayContract();
+
+        vm.stopBroadcast();
+
+        console.log("New AppGateway deployed at:", newAppGateway);
+        console.log("See AppGateway on EVMx: https://evmx.cloud.blockscout.com/address/%s", newAppGateway);
+
+        return newAppGateway;
+    }
+
     // Abstract functions to be implemented by child contracts
     function appGateway() internal view virtual returns (address);
+
+    // Function to be overridden by child contracts to deploy specific AppGateway implementation
+    function deployAppGatewayContract() internal virtual returns (address);
 
     // Standard flow
     // Each implementation script will call these functions

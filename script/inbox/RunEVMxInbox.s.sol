@@ -18,6 +18,12 @@ contract RunEVMxInbox is SetupScript {
         return address(inboxAppGateway);
     }
 
+    function deployAppGatewayContract() internal override returns (address) {
+        // Deploy InboxAppGateway
+        InboxAppGateway newGateway = new InboxAppGateway(addressResolver, deployFees);
+        return address(newGateway);
+    }
+
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
         opSepForwarder = inboxAppGateway.forwarderAddresses(inboxAppGateway.inbox(), opSepChainId);
@@ -71,8 +77,13 @@ contract RunEVMxInbox is SetupScript {
 
     function run() external pure {
         console.log(
-            "Please call one of these external functions: onchainToEVMx(), eVMxToOnchain(), or onchainToOnchain()"
+            "Please call one of these external functions: deployAppGateway(), deployOnchainContracts(), onchainToEVMx(), eVMxToOnchain(), or onchainToOnchain()"
         );
+    }
+
+    function deployAppGateway() external {
+        address newGateway = _deployAppGateway();
+        console.log("AppGateway deployed. Set APP_GATEWAY environment variable to:", newGateway);
     }
 
     function deployOnchainContracts() external {
