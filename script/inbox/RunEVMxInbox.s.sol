@@ -28,15 +28,28 @@ contract RunEVMxInbox is SetupScript {
         address opSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), opSepChainId);
         address arbSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), arbSepChainId);
 
+        vm.createSelectFork(rpcArbSepolia);
+        vm.startBroadcast(privateKey);
+
+        IInbox(arbSepInboxAddress).increaseOnGateway(5);
+
+        vm.stopBroadcast();
         vm.createSelectFork(rpcEVMx);
         vm.startBroadcast(privateKey);
 
-        IInbox(opSepInboxAddress).increaseOnGateway(5);
-        require(inboxAppGateway.valueOnGateway() != 5, "Expected the same value");
+        // TODO: Wait for event? or wait until read is 5 not sure how to handle this on foundry script
+        console.log(inboxAppGateway.valueOnGateway());
         inboxAppGateway.updateOnchain(opSepChainId);
-        require(IInbox(opSepInboxAddress).value() != 5, "Expected the same value");
+
+        vm.stopBroadcast();
+        vm.createSelectFork(rpcOPSepolia);
+        vm.startBroadcast(privateKey);
+
+        // TODO: Wait for event? or wait until read is 5 not sure how to handle this on foundry script
+        console.log(IInbox(opSepInboxAddress).value());
         IInbox(opSepInboxAddress).propagateToAnother(arbSepChainId);
-        require(IInbox(arbSepInboxAddress).value() != 5, "Expected the same value");
+        // TODO: Wait for event? or wait until read is 5 not sure how to handle this on foundry script
+        console.log(IInbox(arbSepInboxAddress).value());
 
         vm.stopBroadcast();
         console.log("All inbox transactions executed successfully");

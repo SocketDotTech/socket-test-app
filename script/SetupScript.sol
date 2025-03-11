@@ -18,6 +18,7 @@ abstract contract SetupScript is Script {
     // ----- ENVIRONMENT VARIABLES -----
     string rpcEVMx = vm.envString("EVMX_RPC");
     string rpcArbSepolia = vm.envString("ARBITRUM_SEPOLIA_RPC");
+    string rpcOPSepolia = vm.envString("OPTIMISM_SEPOLIA_RPC");
     address addressResolver = vm.envAddress("ADDRESS_RESOLVER");
     address feesPlugArbSepolia = vm.envAddress("ARBITRUM_FEES_PLUG");
     address feesManagerAddress = vm.envAddress("FEES_MANAGER");
