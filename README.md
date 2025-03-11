@@ -5,7 +5,7 @@ Follow these steps to deploy and run the EVMx Read tests.
 ### 1. **Deploy the EVMx Read Tests Script**
 Run the following command to deploy the EVMx Read tests script:
 ```bash
-forge script script/read/DeployEVMxReadTests.sol --broadcast --legacy --with-gas-price 0
+forge script script/read/RunEVMxRead.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the EVMx Contract**
@@ -41,6 +41,67 @@ Finally, run the EVMx Read script:
 forge script script/read/RunEVMxRead.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy
 ```
 
+### 6. Withdraw funds
+```bash
+forge script script/inbox/RunEVMxRead.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
+
+# Deployment Steps for EVMx Inbox Tests
+
+Follow these steps to deploy and run the EVMx Inbox tests.
+
+### 1. **Deploy the EVMx Inbox Tests Script**
+Run the following command to deploy the EVMx Inbox tests script:
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
+```
+
+### 1a. **Verify the EVMx Contract**
+Verify the `InboxAppGateway` contract on Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/inbox/InboxAppGateway.sol:InboxAppGateway
+```
+
+### 2. **Update the `APP_GATEWAY` in `.env`**
+Make sure to update the `APP_GATEWAY` address in your `.env` file.
+
+### 3. **Pay Fees in Arbitrum ETH**
+Run the script to pay fees in Arbitrum ETH:
+```bash
+forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --broadcast --skip-simulation
+```
+
+### 4. **Deploy Onchain Contracts**
+Deploy the onchain contracts using the following script:
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContracts()"
+```
+
+### 4a. **Verify the Onchain Contract**
+Verify the `InboxMultichain` contract on Arbitrum Sepolia Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/inbox/Inbox.sol:Inbox
+```
+
+### 5. **Run EVMx Inbox Script**
+Finally, run the EVMx Inbox script:
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToEVMx()"
+```
+
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --legacy --with-gas-price 0 --sig "eVMxToOnchain()"
+```
+
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToOnchain()"
+```
+
+### 6. Withdraw funds
+```bash
+forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
+
 # Deployment Steps for EVMx Write Tests
 
 Follow these steps to deploy and run the EVMx Write tests.
@@ -48,7 +109,7 @@ Follow these steps to deploy and run the EVMx Write tests.
 ### 1. **Deploy the EVMx Write Tests Script**
 Run the following command to deploy the EVMx Write tests script:
 ```bash
-forge script script/write/DeployEVMxWriteTests.sol --broadcast --legacy --with-gas-price 0
+forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the Contract**
@@ -82,4 +143,9 @@ forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier
 Finally, run the EVMx Write script:
 ```bash
 forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy
+```
+
+### 6. Withdraw funds
+```bash
+forge script script/inbox/RunEVMxWrite.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```

@@ -3,22 +3,7 @@ pragma solidity ^0.8.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./Inbox.sol";
-
-interface IInboxDeployer {
-    function inbox() external pure returns (bytes32 bytecode);
-
-    function forwarderAddresses(bytes32 contractId_, uint32 chainSlug_)
-        external
-        view
-        returns (address forwarderAddress);
-}
-
-interface IInbox {
-    function value() external returns (uint256);
-    function increaseOnGateway(uint256 value_) external returns (bytes32);
-    function propagateToAnother(uint32 targetChain) external returns (bytes32);
-    function updateFromGateway(uint256 value) external;
-}
+import "./IInbox.sol";
 
 contract InboxAppGateway is AppGatewayBase {
     bytes32 public inbox = _createContractId("inbox");
@@ -38,25 +23,28 @@ contract InboxAppGateway is AppGatewayBase {
         _deploy(inbox, chainSlug_, IsPlug.YES);
     }
 
-    function initialize(uint32) public pure override {
-        return;
+    function initialize(uint32 chainSlug_) public override {
+        setValidPlug(chainSlug_, inbox, true);
     }
 
-    function updateOnchain(uint32 targetChain) public {
-        address inboxForwarderAddress =
-            IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+    function updateOnchain(uint32 targetChain) public async {
+        address inboxForwarderAddress = forwarderAddresses[inbox][targetChain];
         IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
-    function callFromChain(uint32, address, bytes calldata payload_, bytes32) external override onlyWatcherPrecompile {
+    function callFromChain(uint32, address, bytes calldata payload_, bytes32)
+        external
+        override
+        async
+        onlyWatcherPrecompile
+    {
         (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
         if (msgType == INCREASE_ON_GATEWAY) {
             uint256 valueOnchain = abi.decode(payload, (uint256));
             valueOnGateway += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
-            address inboxForwarderAddress =
-                IInboxDeployer(deployerAddress).forwarderAddresses(IInboxDeployer(deployerAddress).inbox(), targetChain);
+            address inboxForwarderAddress = forwarderAddresses[inbox][targetChain];
             IInbox(inboxForwarderAddress).updateFromGateway(valueOnchain);
         } else {
             revert("InboxGateway: invalid message type");
@@ -65,6 +53,16 @@ contract InboxAppGateway is AppGatewayBase {
 
     function setFees(Fees memory fees_) public {
         fees = fees_;
+    }
+
+    /// @notice Sets the validity of an on-chain contract (plug) to authorize it to send information to a specific AppGateway
+    /// @param chainSlug_ The unique identifier of the chain where the contract resides
+    /// @param contractId The bytes32 identifier of the contract to be validated
+    /// @param isValid Boolean flag indicating whether the contract is authorized (true) or not (false)
+    /// @dev This function retrieves the onchain address using the contractId and chainSlug, then calls the watcher precompile to update the plug's validity status
+    function setValidPlug(uint32 chainSlug_, bytes32 contractId, bool isValid) public {
+        address onchainAddress = getOnChainAddress(contractId, chainSlug_);
+        watcherPrecompile__().setIsValidPlug(chainSlug_, onchainAddress, isValid);
     }
 
     function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
