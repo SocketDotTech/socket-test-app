@@ -42,6 +42,7 @@ contract RunEVMxInbox is SetupScript {
             IInbox(arbSepInboxAddress).increaseOnGateway(5);
 
             vm.stopBroadcast();
+            console.log("Increase on AppGateway executed successfully");
         } else if (step == 2) {
             // TODO: Emit event on each update to easily track and update
             vm.createSelectFork(rpcEVMx);
@@ -50,6 +51,7 @@ contract RunEVMxInbox is SetupScript {
             inboxAppGateway.updateOnchain(opSepChainId);
 
             vm.stopBroadcast();
+            console.log("Update on Optimism Sepolia from AppGateway executed successfully");
         } else if (step == 3) {
             // TODO: Emit event on each update to easily track and update
             vm.createSelectFork(rpcOPSepolia);
@@ -58,8 +60,8 @@ contract RunEVMxInbox is SetupScript {
             IInbox(opSepInboxAddress).propagateToAnother(arbSepChainId);
 
             vm.stopBroadcast();
+            console.log("Update on Arbitrum Sepolia from AppGateway executed successfully");
         }
-        console.log("All inbox transactions executed successfully");
     }
 
     // Initialize contract references
