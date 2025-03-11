@@ -65,13 +65,13 @@ contract RunEVMxInbox is SetupScript {
     // Initialize contract references
     function init() internal {
         inboxAppGateway = InboxAppGateway(appGatewayAddress);
-        opSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), opSepChainId);
-        arbSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), arbSepChainId);
     }
 
     function executeScriptSpecificLogic() internal override {
         init();
         getForwarderAddresses();
+        opSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), opSepChainId);
+        arbSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), arbSepChainId);
         inboxTransactions();
     }
 
