@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 
 contract ScheduleAppGateway is AppGatewayBase {
-    uint256[] public timeoutsInSeconds = [1, 10, 50, 100, 500, 1000, 5000];
+    uint256[] public timeoutsInSeconds = [1, 20, 60, 120, 600, 1200, 5000];
 
     event TimeoutResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
 
