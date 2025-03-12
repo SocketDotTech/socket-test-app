@@ -25,20 +25,7 @@ contract RunEVMxSchedule is SetupScript {
         scheduleAppGateway = ScheduleAppGateway(appGatewayAddress);
     }
 
-    function executeScriptSpecificLogic() internal override {
-        init();
-        scheduleAppGateway.triggerTimeouts();
-        console.log("\nTimeout resolve times:");
-        for (uint256 i = 0; i < 10; i++) {
-            uint256 resolveTime = scheduleAppGateway.resolveTimes(i);
-            uint256 duration = scheduleAppGateway.timeoutDurations(i);
-            if (resolveTime > 0) {
-                console.log("Timeout %s (duration %s): resolved at timestamp %s", i, duration, resolveTime);
-            } else {
-                console.log("Timeout %s (duration %s): not yet resolved", i, duration);
-            }
-        }
-    }
+    function executeScriptSpecificLogic() internal override {}
 
     function run() external pure {
         console.log("Please call one of these external functions: deployAppGateway() or runTimers()");
@@ -53,7 +40,9 @@ contract RunEVMxSchedule is SetupScript {
         _withdrawAppFees(arbSepChainId);
     }
 
-    function runTimers() external {
-        _run(arbSepChainId);
+    function createTimers() external {
+        init();
+        scheduleAppGateway.triggerTimeouts();
+        // TODO: Wait for all 10 events in a separate function to consider and compare timestamps and consider it successful
     }
 }

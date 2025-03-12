@@ -216,19 +216,8 @@ forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier 
 ### 2. **Update the `APP_GATEWAY` in `.env`**
 Make sure to update the `APP_GATEWAY` address in your `.env` file.
 
-### 3. **Pay Fees in Arbitrum ETH**
-Run the script to pay fees in Arbitrum ETH:
-```bash
-forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --broadcast --skip-simulation
-```
-
-### 4. **Run EVMx Schedule Script**
+### 3. **Run EVMx Schedule Script**
 Finally, run the EVMx Schedule script:
 ```bash
-forge script script/schedule/RunEVMxSchedule.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "runTimers()"
-```
-
-### 5. Withdraw funds
-```bash
-forge script script/schedule/RunEVMxSchedule.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+forge script script/schedule/RunEVMxSchedule.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "createTimers()"
 ```

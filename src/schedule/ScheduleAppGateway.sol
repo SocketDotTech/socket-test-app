@@ -4,9 +4,9 @@ pragma solidity >=0.7.0 <0.9.0;
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 
 contract ScheduleAppGateway is AppGatewayBase {
-    uint256[] public resolveTimes = new uint256[](10);
-
     uint256[] public timeoutDurations = [1, 10, 20, 30, 40, 50, 100, 500, 1000, 10000];
+
+    event TimeoutResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
 
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
         _setOverrides(fees_);
@@ -22,14 +22,13 @@ contract ScheduleAppGateway is AppGatewayBase {
 
     function triggerTimeouts() public {
         for (uint256 i = 0; i < timeoutDurations.length; i++) {
-            watcherPrecompile__().setTimeout(
-                address(this), abi.encodeWithSelector(this.resolveTimeout.selector, i), timeoutDurations[i]
-            );
+            bytes memory payload = abi.encodeWithSelector(this.resolveTimeout.selector, i, block.timestamp);
+            watcherPrecompile__().setTimeout(address(this), payload, timeoutDurations[i]);
         }
     }
 
-    function resolveTimeout(uint256 index_) public {
-        resolveTimes[index_] = block.timestamp;
+    function resolveTimeout(uint256 index_, uint256 creationTimestamp_) public {
+        emit TimeoutResolved(index_, creationTimestamp_, block.timestamp);
     }
 
     function setFees(Fees memory fees_) public {
