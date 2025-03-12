@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 
 contract ScheduleAppGateway is AppGatewayBase {
-    uint256[] public timeoutDurations = [1, 10, 20, 30, 40, 50, 100, 500, 1000, 10000];
+    uint256[] public timeoutsInSeconds = [1, 10, 50, 100, 500, 1000, 5000];
 
     event TimeoutResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
 
@@ -21,9 +21,9 @@ contract ScheduleAppGateway is AppGatewayBase {
     }
 
     function triggerTimeouts() public {
-        for (uint256 i = 0; i < timeoutDurations.length; i++) {
+        for (uint256 i = 0; i < timeoutsInSeconds.length; i++) {
             bytes memory payload = abi.encodeWithSelector(this.resolveTimeout.selector, i, block.timestamp);
-            watcherPrecompile__().setTimeout(address(this), payload, timeoutDurations[i]);
+            watcherPrecompile__().setTimeout(address(this), payload, timeoutsInSeconds[i]);
         }
     }
 
