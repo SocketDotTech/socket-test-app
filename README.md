@@ -187,7 +187,7 @@ forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier
 ```
 
 ### 5. **Run EVMx Deploy Script**
-Finally, run the EVMx Write script:
+Finally, run the EVMx Deploy script:
 ```bash
 forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "runTests()"
 ```
@@ -195,4 +195,29 @@ forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --skip-simulation --w
 ### 6. Withdraw funds
 ```bash
 forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
+
+# Deployment Steps for EVMx Schedule Tests
+
+Follow these steps to deploy and run the EVMx Write tests.
+
+### 1. **Deploy the EVMx Schedule Tests Script**
+Run the following command to deploy the EVMx Schedule tests script:
+```bash
+forge script script/schedule/RunEVMxSchedule.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
+```
+
+### 1a. **Verify the Contract**
+Verify the `ScheduleAppGateway` contract on Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/schedule/ScheduleAppGateway.sol:ScheduleAppGateway
+```
+
+### 2. **Update the `APP_GATEWAY` in `.env`**
+Make sure to update the `APP_GATEWAY` address in your `.env` file.
+
+### 3. **Run EVMx Schedule Script**
+Finally, run the EVMx Schedule script:
+```bash
+forge script script/schedule/RunEVMxSchedule.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "createTimers()"
 ```
