@@ -4,6 +4,11 @@ pragma solidity >=0.7.0 <0.9.0;
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./DeployOnchain.sol";
 
+interface IDeployOnchain {
+    function variable() external;
+    function socket__() external;
+}
+
 contract DeploymentAppGateway is AppGatewayBase {
     bytes32 public noPlugNoInititialize = _createContractId("noPlugNoInititialize");
     bytes32 public noPlugInitialize = _createContractId("noPlugInitialize");
@@ -46,41 +51,57 @@ contract DeploymentAppGateway is AppGatewayBase {
     function contractValidation(uint32 chainSlug_) external async {
         address noPlugNoInititializeForwarder = forwarderAddresses[noPlugNoInititialize][chainSlug_];
         address noPlugInitializeForwarder = forwarderAddresses[noPlugInitialize][chainSlug_];
-
-        NoPlugNoInititialize _noPlugNoInititialize = NoPlugNoInititialize(noPlugNoInititializeForwarder);
-        NoPlugInitialize _noPlugInitialize = NoPlugInitialize(noPlugInitializeForwarder);
-        PlugNoInitialize _plugNoInitialize = PlugNoInitialize(forwarderAddresses[plugNoInitialize][chainSlug_]);
-        PlugInitialize _plugInitialize = PlugInitialize(forwarderAddresses[plugInitialize][chainSlug_]);
-        PlugInitializeTwice _plugInitializeTwice =
-            PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]);
-        PlugNoInitInitialize _plugNoInitInitialize =
-            PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]);
+        address plugNoInitializeForwarder = forwarderAddresses[plugNoInitialize][chainSlug_];
+        address plugInitializeForwarder = forwarderAddresses[plugInitialize][chainSlug_];
+        address plugInitializeTwiceForwarder = forwarderAddresses[plugInitializeTwice][chainSlug_];
+        address plugNoInitInitializeForwarder = forwarderAddresses[plugNoInitInitialize][chainSlug_];
 
         // NoPlugNoInititialize checks
-        require(_noPlugNoInititialize.variable() == 0, "variable should be 0");
-        (bool success,) = noPlugNoInititializeForwarder.call(abi.encodeWithSignature("socket__()"));
-        require(!success, "Should revert on socket__()");
+        _setOverrides(Read.ON);
+        IDeployOnchain(noPlugNoInititializeForwarder).variable();
+        IPromise(noPlugNoInititializeForwarder).then(this.validateVariable.selector, abi.encode(0));
 
         // NoPlugInitialize checks
-        require(_noPlugInitialize.variable() == 10, "variable should be 10");
-        (success,) = noPlugInitializeForwarder.call(abi.encodeWithSignature("socket__()"));
-        require(!success, "Should revert on socket__()");
+        IDeployOnchain(noPlugInitializeForwarder).variable();
+        IPromise(noPlugInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
 
         // PlugNoInitialize checks
-        require(_plugNoInitialize.variable() == 0, "variable should be 0");
-        require(address(_plugNoInitialize.socket__()) != address(0), "Should return socket address");
+        IDeployOnchain(plugNoInitializeForwarder).variable();
+        IPromise(plugNoInitializeForwarder).then(this.validateVariable.selector, abi.encode(0));
+        IDeployOnchain(plugNoInitializeForwarder).socket__();
+        IPromise(plugNoInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
 
         // PlugInitialize checks
-        require(_plugInitialize.variable() == 10, "variable should be 10");
-        require(address(_plugInitialize.socket__()) != address(0), "Should return socket address");
+        IDeployOnchain(plugInitializeForwarder).variable();
+        IPromise(plugInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        IDeployOnchain(plugInitializeForwarder).socket__();
+        IPromise(plugInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
 
         // PlugInitializeTwice checks
-        require(address(_plugInitializeTwice.socket__()) != address(0), "Should return socket address");
-        require(_plugInitializeTwice.variable() == 20, "variable should be 20");
+        IDeployOnchain(plugInitializeTwiceForwarder).variable();
+        IPromise(plugInitializeTwiceForwarder).then(this.validateVariable.selector, abi.encode(20));
+        IDeployOnchain(plugInitializeTwiceForwarder).socket__();
+        IPromise(plugInitializeTwiceForwarder).then(this.validateSocket.selector, abi.encode(0));
 
         // PlugNoInitInitialize checks
-        require(_plugNoInitInitialize.variable() == 10, "variable should be 10");
-        require(address(_plugNoInitInitialize.socket__()) != address(0), "Should return socket address");
+        _setOverrides(Read.ON);
+        IDeployOnchain(plugNoInitInitializeForwarder).variable();
+        IPromise(plugNoInitInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        IDeployOnchain(plugNoInitInitializeForwarder).socket__();
+        IPromise(plugNoInitInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        _setOverrides(Read.OFF);
+    }
+
+    function validateVariable(bytes memory data, bytes memory returnData) external onlyPromises {
+        uint256 onchainVariable = abi.decode(returnData, (uint256));
+        uint256 expectedVariable = abi.decode(data, (uint256));
+        require(onchainVariable == expectedVariable, "unexpected variable value");
+    }
+
+    function validateSocket(bytes memory data, bytes memory returnData) external onlyPromises {
+        address onchainSocket = abi.decode(returnData, (address));
+        address notSocket = abi.decode(data, (address));
+        require(onchainSocket != notSocket, "Should return socket address");
     }
 
     function setFees(Fees memory fees_) public {
