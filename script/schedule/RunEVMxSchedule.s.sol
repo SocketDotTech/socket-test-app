@@ -28,6 +28,16 @@ contract RunEVMxSchedule is SetupScript {
     function executeScriptSpecificLogic() internal override {
         init();
         scheduleAppGateway.triggerTimeouts();
+        console.log("\nTimeout resolve times:");
+        for (uint256 i = 0; i < 10; i++) {
+            uint256 resolveTime = scheduleAppGateway.resolveTimes(i);
+            uint256 duration = scheduleAppGateway.timeoutDurations(i);
+            if (resolveTime > 0) {
+                console.log("Timeout %s (duration %s): resolved at timestamp %s", i, duration, resolveTime);
+            } else {
+                console.log("Timeout %s (duration %s): not yet resolved", i, duration);
+            }
+        }
     }
 
     function run() external pure {
