@@ -28,7 +28,7 @@ contract RunEVMxSchedule is SetupScript {
     function executeScriptSpecificLogic() internal override {}
 
     function run() external pure {
-        console.log("Please call one of these external functions: deployAppGateway() or runTimers()");
+        console.log("Please call one of these external functions: deployAppGateway() or createTimers()");
     }
 
     function deployAppGateway() external {
@@ -42,7 +42,10 @@ contract RunEVMxSchedule is SetupScript {
 
     function createTimers() external {
         init();
+        vm.createSelectFork(rpcEVMx);
+        vm.startBroadcast(privateKey);
         scheduleAppGateway.triggerTimeouts();
+        vm.stopBroadcast();
         // TODO: Wait for all 10 events in a separate function to consider and compare timestamps and consider it successful
     }
 }
