@@ -43,7 +43,7 @@ forge script script/read/RunEVMxRead.s.sol --broadcast --skip-simulation --with-
 
 ### 6. Withdraw funds
 ```bash
-forge script script/inbox/RunEVMxRead.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+forge script script/read/RunEVMxRead.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
 
 # Deployment Steps for EVMx Inbox Tests
@@ -147,5 +147,52 @@ forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --wit
 
 ### 6. Withdraw funds
 ```bash
-forge script script/inbox/RunEVMxWrite.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+forge script script/write/RunEVMxWrite.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
+# Deployment Steps for EVMx Deploy Tests
+
+Follow these steps to deploy and run the EVMx Write tests.
+
+### 1. **Deploy the EVMx Deploy Tests Script**
+Run the following command to deploy the EVMx Deploy tests script:
+```bash
+forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
+```
+
+### 1a. **Verify the Contract**
+Verify the `DeployAppGateway` contract on Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/deploy/DeploymentAppGateway.sol:DeploymentAppGateway
+```
+
+### 2. **Update the `APP_GATEWAY` in `.env`**
+Make sure to update the `APP_GATEWAY` address in your `.env` file.
+
+### 3. **Pay Fees in Arbitrum ETH**
+Run the script to pay fees in Arbitrum ETH:
+```bash
+forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --broadcast --skip-simulation
+```
+
+### 4. **Deploy Onchain Contracts**
+Deploy the onchain contracts using the following script:
+```bash
+forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContracts()"
+```
+
+### 4a. **Verify the Contract**
+Verify the `DeployOnchain` contract on Arbitrum Sepolia Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/deploy/DeployOnchain.sol:NoPlugNoInitialize
+```
+
+### 5. **Run EVMx Deploy Script**
+Finally, run the EVMx Write script:
+```bash
+forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "runTests()"
+```
+
+### 6. Withdraw funds
+```bash
+forge script script/deploy/RunEVMxDeploy.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
