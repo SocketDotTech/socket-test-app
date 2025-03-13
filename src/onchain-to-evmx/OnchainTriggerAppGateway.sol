@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "./Inbox.sol";
-import "./IInbox.sol";
+import "./OnchainTrigger.sol";
+import "./IOnchainTrigger.sol";
 
-contract InboxAppGateway is AppGatewayBase {
-    bytes32 public inbox = _createContractId("inbox");
+contract OnchainTriggerAppGateway is AppGatewayBase {
+    bytes32 public onchainToEVMx = _createContractId("onchainToEVMx");
     uint256 public valueOnGateway;
     address deployerAddress;
 
@@ -15,21 +15,21 @@ contract InboxAppGateway is AppGatewayBase {
     uint32 public constant PROPAGATE_TO_ANOTHER = 2;
 
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
-        creationCodeWithArgs[inbox] = abi.encodePacked(type(Inbox).creationCode);
+        creationCodeWithArgs[onchainToEVMx] = abi.encodePacked(type(OnchainTrigger).creationCode);
         _setOverrides(fees_);
     }
 
     function deployContracts(uint32 chainSlug_) external async {
-        _deploy(inbox, chainSlug_, IsPlug.YES);
+        _deploy(onchainToEVMx, chainSlug_, IsPlug.YES);
     }
 
     function initialize(uint32 chainSlug_) public override {
-        setValidPlug(chainSlug_, inbox, true);
+        setValidPlug(chainSlug_, onchainToEVMx, true);
     }
 
     function updateOnchain(uint32 targetChain) public async {
-        address inboxForwarderAddress = forwarderAddresses[inbox][targetChain];
-        IInbox(inboxForwarderAddress).updateFromGateway(valueOnGateway);
+        address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
+        IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
     function callFromChain(uint32, address, bytes calldata payload_, bytes32)
@@ -44,10 +44,10 @@ contract InboxAppGateway is AppGatewayBase {
             valueOnGateway += valueOnchain;
         } else if (msgType == PROPAGATE_TO_ANOTHER) {
             (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
-            address inboxForwarderAddress = forwarderAddresses[inbox][targetChain];
-            IInbox(inboxForwarderAddress).updateFromGateway(valueOnchain);
+            address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
+            IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnchain);
         } else {
-            revert("InboxGateway: invalid message type");
+            revert("OnchainTriggerGateway: invalid message type");
         }
     }
 

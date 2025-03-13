@@ -46,20 +46,20 @@ forge script script/read/RunEVMxRead.s.sol --broadcast --skip-simulation --with-
 forge script script/read/RunEVMxRead.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
 
-# Deployment Steps for EVMx Inbox Tests
+# Deployment Steps for EVMx OnchainTrigger Tests
 
-Follow these steps to deploy and run the EVMx Inbox tests.
+Follow these steps to deploy and run the EVMx OnchainTrigger tests.
 
-### 1. **Deploy the EVMx Inbox Tests Script**
-Run the following command to deploy the EVMx Inbox tests script:
+### 1. **Deploy the EVMx OnchainTrigger Tests Script**
+Run the following command to deploy the EVMx OnchainTrigger tests script:
 ```bash
-forge script script/inbox/RunEVMxInbox.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
+forge script script/onchain-to-evmx/RunEVMxOnchainTrigger.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
 ```
 
 ### 1a. **Verify the EVMx Contract**
-Verify the `InboxAppGateway` contract on Blockscout:
+Verify the `OnchainTriggerAppGateway` contract on Blockscout:
 ```bash
-forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/inbox/InboxAppGateway.sol:InboxAppGateway
+forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/onchain-to-evmx/OnchainTriggerAppGateway.sol:OnchainTriggerAppGateway
 ```
 
 ### 2. **Update the `APP_GATEWAY` in `.env`**
@@ -74,32 +74,32 @@ forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --bro
 ### 4. **Deploy Onchain Contracts**
 Deploy the onchain contracts using the following script:
 ```bash
-forge script script/inbox/RunEVMxInbox.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContracts()"
+forge script script/onchain-to-evmx/RunEVMxOnchainTrigger.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContracts()"
 ```
 
 ### 4a. **Verify the Onchain Contract**
-Verify the `InboxMultichain` contract on Arbitrum Sepolia Blockscout:
+Verify the `OnchainTrigger` contract on Arbitrum Sepolia Blockscout:
 ```bash
-forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/inbox/Inbox.sol:Inbox
+forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/onchain-to-evmx/OnchainTrigger.sol:OnchainTrigger
 ```
 
-### 5. **Run EVMx Inbox Script**
-Finally, run the EVMx Inbox script:
+### 5. **Run EVMx OnchainTrigger Script**
+Finally, run the EVMx OnchainTrigger script:
 ```bash
-forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToEVMx()"
-```
-
-```bash
-forge script script/inbox/RunEVMxInbox.s.sol --broadcast --legacy --with-gas-price 0 --sig "eVMxToOnchain()"
+forge script script/onchain-to-evmx/RunEVMxOnchainTrigger.s.sol --broadcast --sig "onchainToEVMx()"
 ```
 
 ```bash
-forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "onchainToOnchain()"
+forge script script/onchain-to-evmx/RunEVMxOnchainTrigger.s.sol --broadcast --legacy --with-gas-price 0 --sig "eVMxToOnchain()"
+```
+
+```bash
+forge script script/onchain-to-evmx/RunEVMxOnchainTrigger.s.sol --broadcast --sig "onchainToOnchain()"
 ```
 
 ### 6. Withdraw funds
 ```bash
-forge script script/inbox/RunEVMxInbox.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+forge script script/onchain-to-evmx/RunEVMxOnchainTrigger.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
 
 # Deployment Steps for EVMx Write Tests

@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 import "solady/auth/Ownable.sol";
 import "socket-protocol/contracts/base/PlugBase.sol";
 
-contract Inbox is Ownable, PlugBase {
+contract OnchainTrigger is Ownable, PlugBase {
     uint256 public value;
 
     // Message types

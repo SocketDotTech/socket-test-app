@@ -3,43 +3,45 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
-import {InboxAppGateway} from "../../src/inbox/InboxAppGateway.sol";
-import {IInbox} from "../../src/inbox/IInbox.sol";
+import {OnchainTriggerAppGateway} from "../../src/onchain-to-evmx/OnchainTriggerAppGateway.sol";
+import {IOnchainTrigger} from "../../src/onchain-to-evmx/IOnchainTrigger.sol";
 
-contract RunEVMxInbox is SetupScript {
-    InboxAppGateway inboxAppGateway;
+contract RunEVMxOnchainTrigger is SetupScript {
+    OnchainTriggerAppGateway onchainToEVMxAppGateway;
     address opSepForwarder;
     address arbSepForwarder;
-    address opSepInboxAddress;
-    address arbSepInboxAddress;
+    address opSepOnchainTriggerAddress;
+    address arbSepOnchainTriggerAddress;
     uint8 step;
 
     function appGateway() internal view override returns (address) {
-        return address(inboxAppGateway);
+        return address(onchainToEVMxAppGateway);
     }
 
     function deployAppGatewayContract() internal override returns (address) {
-        // Deploy InboxAppGateway
-        InboxAppGateway newGateway = new InboxAppGateway(addressResolver, deployFees);
+        // Deploy OnchainTriggerAppGateway
+        OnchainTriggerAppGateway newGateway = new OnchainTriggerAppGateway(addressResolver, deployFees);
         return address(newGateway);
     }
 
     function getForwarderAddresses() internal {
         vm.createSelectFork(rpcEVMx);
-        opSepForwarder = inboxAppGateway.forwarderAddresses(inboxAppGateway.inbox(), opSepChainId);
-        arbSepForwarder = inboxAppGateway.forwarderAddresses(inboxAppGateway.inbox(), arbSepChainId);
+        opSepForwarder =
+            onchainToEVMxAppGateway.forwarderAddresses(onchainToEVMxAppGateway.onchainToEVMx(), opSepChainId);
+        arbSepForwarder =
+            onchainToEVMxAppGateway.forwarderAddresses(onchainToEVMxAppGateway.onchainToEVMx(), arbSepChainId);
 
         console.log("Optimism Sepolia Forwarder:", opSepForwarder);
         console.log("Arbitrum Sepolia Forwarder:", arbSepForwarder);
     }
 
-    function inboxTransactions() internal {
+    function onchainToEVMxTransactions() internal {
         // TODO: Emit event on each update to easily track and update
         if (step == 1) {
             vm.createSelectFork(rpcArbSepolia);
             vm.startBroadcast(privateKey);
 
-            IInbox(arbSepInboxAddress).increaseOnGateway(5);
+            IOnchainTrigger(arbSepOnchainTriggerAddress).increaseOnGateway(5);
 
             vm.stopBroadcast();
             console.log("Increase on AppGateway executed successfully");
@@ -48,7 +50,7 @@ contract RunEVMxInbox is SetupScript {
             vm.createSelectFork(rpcEVMx);
             vm.startBroadcast(privateKey);
 
-            inboxAppGateway.updateOnchain(opSepChainId);
+            onchainToEVMxAppGateway.updateOnchain(opSepChainId);
 
             vm.stopBroadcast();
             console.log("Update on Optimism Sepolia from AppGateway executed successfully");
@@ -57,7 +59,7 @@ contract RunEVMxInbox is SetupScript {
             vm.createSelectFork(rpcOPSepolia);
             vm.startBroadcast(privateKey);
 
-            IInbox(opSepInboxAddress).propagateToAnother(arbSepChainId);
+            IOnchainTrigger(opSepOnchainTriggerAddress).propagateToAnother(arbSepChainId);
 
             vm.stopBroadcast();
             console.log("Update on Arbitrum Sepolia from AppGateway executed successfully");
@@ -66,15 +68,17 @@ contract RunEVMxInbox is SetupScript {
 
     // Initialize contract references
     function init() internal {
-        inboxAppGateway = InboxAppGateway(appGatewayAddress);
+        onchainToEVMxAppGateway = OnchainTriggerAppGateway(appGatewayAddress);
     }
 
     function executeScriptSpecificLogic() internal override {
         init();
         getForwarderAddresses();
-        opSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), opSepChainId);
-        arbSepInboxAddress = inboxAppGateway.getOnChainAddress(inboxAppGateway.inbox(), arbSepChainId);
-        inboxTransactions();
+        opSepOnchainTriggerAddress =
+            onchainToEVMxAppGateway.getOnChainAddress(onchainToEVMxAppGateway.onchainToEVMx(), opSepChainId);
+        arbSepOnchainTriggerAddress =
+            onchainToEVMxAppGateway.getOnChainAddress(onchainToEVMxAppGateway.onchainToEVMx(), arbSepChainId);
+        onchainToEVMxTransactions();
     }
 
     function run() external pure {
