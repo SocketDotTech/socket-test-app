@@ -22,21 +22,20 @@ contract WriteAppGateway is AppGatewayBase {
     }
 
     function triggerSequentialWrite(address instance_) public async {
-        _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
         }
     }
 
     function triggerParallelWrite(address instance_) public async {
-        _setOverrides(Read.OFF, Parallel.ON);
+        _setOverrides(Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
         }
+        _setOverrides(Parallel.OFF);
     }
 
     function triggerAltWrite(address instance1_, address instance2_) public async {
-        _setOverrides(Read.OFF, Parallel.OFF);
         for (uint256 i = 0; i < 5; i++) {
             IWriteMultichain(instance1_).increase();
             IWriteMultichain(instance2_).increase();
