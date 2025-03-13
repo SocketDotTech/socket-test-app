@@ -142,13 +142,14 @@ forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier
 ### 5. **Run EVMx Write Script**
 Finally, run the EVMx Write script:
 ```bash
-forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy
+forge script script/write/RunEVMxWrite.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "runTriggers()"
 ```
 
 ### 6. Withdraw funds
 ```bash
 forge script script/write/RunEVMxWrite.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
+
 # Deployment Steps for EVMx Deploy Tests
 
 Follow these steps to deploy and run the EVMx Write tests.

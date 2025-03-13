@@ -8,9 +8,10 @@ contract WriteMultichain is PlugBase {
 
     event CounterIncreasedTo(uint256);
 
-    function increase() external onlySocket {
+    function increase() external onlySocket returns (uint256) {
         counter++;
         emit CounterIncreasedTo(counter);
+        return counter;
     }
 
     function connectSocket(address appGateway_, address socket_, address switchboard_) external {

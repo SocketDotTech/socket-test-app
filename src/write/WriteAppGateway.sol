@@ -8,6 +8,8 @@ import "./WriteMultichain.sol";
 contract WriteAppGateway is AppGatewayBase {
     bytes32 public multichain = _createContractId("WriteMultichain");
 
+    event CounterIncreased(address instance, uint256 index, uint256 value);
+
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
         _setOverrides(fees_);
@@ -24,6 +26,7 @@ contract WriteAppGateway is AppGatewayBase {
     function triggerSequentialWrite(address instance_) public async {
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
+            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
         }
     }
 
@@ -31,6 +34,7 @@ contract WriteAppGateway is AppGatewayBase {
         _setOverrides(Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
+            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
         }
         _setOverrides(Parallel.OFF);
     }
@@ -38,8 +42,16 @@ contract WriteAppGateway is AppGatewayBase {
     function triggerAltWrite(address instance1_, address instance2_) public async {
         for (uint256 i = 0; i < 5; i++) {
             IWriteMultichain(instance1_).increase();
+            IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));
             IWriteMultichain(instance2_).increase();
+            IPromise(instance2_).then(this.handleValue.selector, abi.encode(i, instance2_));
         }
+    }
+
+    function handleValue(bytes memory data, bytes memory returnData) public onlyPromises {
+        (uint256 index_, address instance) = abi.decode(data, (uint256, address));
+        uint256 value_ = abi.decode(returnData, (uint256));
+        emit CounterIncreased(instance, index_, value_);
     }
 
     function setFees(Fees memory fees_) public {
