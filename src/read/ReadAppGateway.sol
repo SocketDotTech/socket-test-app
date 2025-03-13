@@ -35,6 +35,7 @@ contract ReadAppGateway is AppGatewayBase {
             IReadMultichain(instance_).values(i);
             IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
         }
+        _setOverrides(Read.OFF, Parallel.OFF);
     }
 
     function triggerAltRead(address instance1_, address instance2_) public async {
@@ -48,6 +49,7 @@ contract ReadAppGateway is AppGatewayBase {
                 IPromise(instance2_).then(this.handleValue.selector, abi.encode(i, instance2_));
             }
         }
+        _setOverrides(Read.OFF, Parallel.OFF);
     }
 
     function handleValue(bytes memory data, bytes memory returnData) public onlyPromises {
