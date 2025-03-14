@@ -243,7 +243,7 @@ Make sure to update the `APP_GATEWAY` address in your `.env` file.
 ### 3. **Deploy Onchain Counter Contract**
 Deploy the Counter contract on Arbitrum Sepolia:
 ```bash
-forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContract()"
+forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --sig "deployOnchainContract()"
 ```
 
 ### 3a. **Verify the Contract**
@@ -252,13 +252,19 @@ Verify the `Counter` contract on Arbitrum Sepolia Blockscout:
 forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <COUNTER_ADDRESS> src/forwarder-on-evmx/Counter.sol:Counter
 ```
 
-### 4. **Upload to EVMx, Connect and Read**
+### 4. **Pay Fees in Arbitrum ETH**
+Run the script to pay fees in Arbitrum ETH:
+```bash
+forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --broadcast --skip-simulation
+```
+
+### 5. **Upload and Read**
 Run the following command to upload the Counter contract to EVMx and read its value:
 ```bash
 forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "read(address)" <COUNTER_ADDRESS>
 ```
 
-### 5. **Withdraw App Fees**
+### 6. **Withdraw App Fees**
 To withdraw the accumulated fees:
 ```bash
 forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0

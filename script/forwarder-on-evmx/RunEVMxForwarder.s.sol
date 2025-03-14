@@ -9,6 +9,7 @@ import {Counter} from "../../src/forwarder-on-evmx/Counter.sol";
 contract RunEVMxUpload is SetupScript {
     Counter counter;
     UploadAppGateway uploadAppGateway;
+    address onchainCounter;
 
     function appGateway() internal view override returns (address) {
         return address(uploadAppGateway);
@@ -26,7 +27,14 @@ contract RunEVMxUpload is SetupScript {
     }
 
     function executeScriptSpecificLogic() internal override {
-        init();
+        vm.createSelectFork(rpcEVMx);
+        vm.startBroadcast(privateKey);
+
+        uploadAppGateway.uploadToEVMx(onchainCounter, arbSepChainId);
+        console.log("CounterForwarder:", uploadAppGateway.counterForwarder());
+        uploadAppGateway.read();
+
+        vm.stopBroadcast();
     }
 
     function run() external pure {
@@ -48,13 +56,10 @@ contract RunEVMxUpload is SetupScript {
         vm.stopBroadcast();
     }
 
-    function read(address onchainCounter) external {
-        vm.createSelectFork(rpcEVMx);
-        vm.startBroadcast(privateKey);
-        uploadAppGateway.uploadToEVMx(onchainCounter, arbSepChainId);
-        console.log("CounterForwarder:", uploadAppGateway.counterForwarder());
-        uploadAppGateway.read();
-        vm.stopBroadcast();
+    function read(address onchainCounter_) external {
+        init();
+        onchainCounter = onchainCounter_;
+        _run(arbSepChainId);
     }
 
     function withdrawAppFees() external {
