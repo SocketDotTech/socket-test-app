@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {SetupScript} from "../SetupScript.sol";
-import {OnchainTriggerAppGateway} from "../../src/onchain-to-evmx/OnchainTriggerAppGateway.sol";
-import {IOnchainTrigger} from "../../src/onchain-to-evmx/IOnchainTrigger.sol";
+import {OnchainTriggerAppGateway} from "../../src/trigger-appgateway-onchain/OnchainTriggerAppGateway.sol";
+import {IOnchainTrigger} from "../../src/trigger-appgateway-onchain/IOnchainTrigger.sol";
 
 contract RunEVMxOnchainTrigger is SetupScript {
     OnchainTriggerAppGateway onchainToEVMxAppGateway;

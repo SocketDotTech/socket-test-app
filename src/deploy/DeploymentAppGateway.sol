@@ -3,20 +3,51 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "./DeployOnchain.sol";
+import "./IDeployOnchain.sol";
 
-interface IDeployOnchain {
-    function variable() external;
-    function socket__() external;
-}
-
+/**
+ * @title DeploymentAppGateway
+ * @dev Gateway contract for deploying and testing various contract deployment scenarios
+ * Tests different combinations of plug/non-plug contracts with and without initialization
+ * Inherits from AppGatewayBase for SOCKET Protocol integration
+ */
 contract DeploymentAppGateway is AppGatewayBase {
+    /**
+     * @notice Contract ID for a non-plug contract without initialization
+     */
     bytes32 public noPlugNoInititialize = _createContractId("noPlugNoInititialize");
+
+    /**
+     * @notice Contract ID for a non-plug contract with initialization
+     */
     bytes32 public noPlugInitialize = _createContractId("noPlugInitialize");
+
+    /**
+     * @notice Contract ID for a plug contract without initialization
+     */
     bytes32 public plugNoInitialize = _createContractId("plugNoInitialize");
+
+    /**
+     * @notice Contract ID for a plug contract with initialization
+     */
     bytes32 public plugInitialize = _createContractId("plugInitialize");
+
+    /**
+     * @notice Contract ID for a plug contract with initialization called twice
+     */
     bytes32 public plugInitializeTwice = _createContractId("plugInitializeTwice");
+
+    /**
+     * @notice Contract ID for a plug contract with initialization called separately
+     */
     bytes32 public plugNoInitInitialize = _createContractId("plugNoInitInitialize");
 
+    /**
+     * @notice Constructs the DeploymentAppGateway contract
+     * @dev Sets up the creation code for all test contracts and configures fee overrides
+     * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
+     * @param fees_ Fee configuration for multi-chain operations
+     */
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[noPlugNoInititialize] = abi.encodePacked(type(NoPlugNoInititialize).creationCode);
         creationCodeWithArgs[noPlugInitialize] = abi.encodePacked(type(NoPlugInitialize).creationCode);
@@ -27,6 +58,11 @@ contract DeploymentAppGateway is AppGatewayBase {
         _setOverrides(fees_);
     }
 
+    /**
+     * @notice Deploys all test contracts to a specified chain
+     * @dev Triggers asynchronous multi-chain deployments with different initialization scenarios
+     * @param chainSlug_ The identifier of the target chain
+     */
     function deployContracts(uint32 chainSlug_) external async {
         _deploy(noPlugNoInititialize, chainSlug_, IsPlug.NO);
         _deploy(
@@ -43,11 +79,21 @@ contract DeploymentAppGateway is AppGatewayBase {
         _deploy(plugNoInitInitialize, chainSlug_, IsPlug.YES);
     }
 
+    /**
+     * @notice Initializes contracts that require post-deployment initialization
+     * @dev Calls initialize functions on specific contracts after deployment
+     * @param chainSlug_ The identifier of the chain where contracts were deployed
+     */
     function initialize(uint32 chainSlug_) public override async {
         PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]).initialise(10);
         PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]).initialise(10);
     }
 
+    /**
+     * @notice Validates the state of all deployed contracts
+     * @dev Performs checks on each contract type to ensure proper initialization and functionality
+     * @param chainSlug_ The identifier of the chain where contracts were deployed
+     */
     function contractValidation(uint32 chainSlug_) external async {
         address noPlugNoInititializeForwarder = forwarderAddresses[noPlugNoInititialize][chainSlug_];
         address noPlugInitializeForwarder = forwarderAddresses[noPlugInitialize][chainSlug_];
@@ -92,22 +138,47 @@ contract DeploymentAppGateway is AppGatewayBase {
         _setOverrides(Read.OFF);
     }
 
+    /**
+     * @notice Validates the variable value of a deployed contract
+     * @dev Callback function for promise resolution that checks if the variable matches expected value
+     * @param data The encoded expected variable value
+     * @param returnData The encoded actual variable value returned from the contract
+     */
     function validateVariable(bytes memory data, bytes memory returnData) external onlyPromises {
         uint256 onchainVariable = abi.decode(returnData, (uint256));
         uint256 expectedVariable = abi.decode(data, (uint256));
         require(onchainVariable == expectedVariable, "unexpected variable value");
     }
 
+    /**
+     * @notice Validates the socket address of a deployed contract
+     * @dev Callback function for promise resolution that checks if the contract has a valid socket address
+     * @param data The encoded address (expected to be 0)
+     * @param returnData The encoded socket address returned from the contract
+     */
     function validateSocket(bytes memory data, bytes memory returnData) external onlyPromises {
         address onchainSocket = abi.decode(returnData, (address));
         address notSocket = abi.decode(data, (address));
         require(onchainSocket != notSocket, "Should return socket address");
     }
 
+    /**
+     * @notice Updates the fee configuration
+     * @dev Allows modification of fee settings for onchain operations
+     * @param fees_ New fee configuration
+     */
     function setFees(Fees memory fees_) public {
         fees = fees_;
     }
 
+    /**
+     * @notice Withdraws fee tokens from the SOCKET Protocol
+     * @dev Allows withdrawal of accumulated fees to a specified receiver
+     * @param chainSlug_ The chain from which to withdraw fees
+     * @param token_ The token address to withdraw
+     * @param amount_ The amount to withdraw
+     * @param receiver_ The address that will receive the withdrawn fees
+     */
     function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
         _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
     }
