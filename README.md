@@ -222,3 +222,44 @@ Finally, run the EVMx Schedule script:
 ```bash
 forge script script/schedule/RunEVMxSchedule.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "createTimers()"
 ```
+# Deployment Steps for EVMx Forwarder
+Follow these steps to deploy and run the EVMx Forwarder.
+
+### 1. **Deploy the App Gateway**
+Run the following command to deploy the `UploadAppGateway` contract:
+```bash
+forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
+```
+
+### 1a. **Verify the Contract**
+Verify the `UploadAppGateway` contract on Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/forwarder-on-evmx/UploadAppGateway.sol:UploadAppGateway
+```
+
+### 2. **Update the `APP_GATEWAY` in `.env`**
+Make sure to update the `APP_GATEWAY` address in your `.env` file.
+
+### 3. **Deploy Onchain Counter Contract**
+Deploy the Counter contract on Arbitrum Sepolia:
+```bash
+forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContract()"
+```
+
+### 3a. **Verify the Contract**
+Verify the `Counter` contract on Arbitrum Sepolia Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <COUNTER_ADDRESS> src/forwarder-on-evmx/Counter.sol:Counter
+```
+
+### 4. **Upload to EVMx, Connect and Read**
+Run the following command to upload the Counter contract to EVMx and read its value:
+```bash
+forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "read(address)" <COUNTER_ADDRESS>
+```
+
+### 5. **Withdraw App Fees**
+To withdraw the accumulated fees:
+```bash
+forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
