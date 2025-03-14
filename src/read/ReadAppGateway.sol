@@ -27,11 +27,6 @@ contract ReadAppGateway is AppGatewayBase {
     uint256[] public values;
 
     /**
-     * @notice Error thrown when trying to access an index outside the bounds of the values array
-     */
-    error OutOfBounds();
-
-    /**
      * @notice Emitted when a value is successfully read from a contract instance
      * @param instance The address of the ReadMultichain instance
      * @param index The index of the value in the values array
@@ -116,7 +111,6 @@ contract ReadAppGateway is AppGatewayBase {
         (uint256 index_, address instance) = abi.decode(data, (uint256, address));
         uint256 value_ = abi.decode(returnData, (uint256));
 
-        if (index_ >= 10) revert OutOfBounds();
         values[index_] = value_;
         emit ValueRead(instance, index_, value_);
     }
