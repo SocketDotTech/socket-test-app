@@ -28,7 +28,7 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @notice Constructs the ScheduleAppGateway
      * @dev Sets up fee overrides for the contract
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
-     * @param fees_ Fee configuration for cross-chain operations
+     * @param fees_ Fee configuration for onchain operations
      */
     constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
         _setOverrides(fees_);
@@ -75,7 +75,7 @@ contract ScheduleAppGateway is AppGatewayBase {
 
     /**
      * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for cross-chain operations
+     * @dev Allows modification of fee settings for onchain operations
      * @param fees_ New fee configuration
      */
     function setFees(Fees memory fees_) public {
