@@ -39,7 +39,7 @@ contract RunEVMxUpload is SetupScript {
 
     function run() external pure {
         console.log(
-            "Please call one of these external functions: deployAppGateway(), deployOnchainContract(), updateConnectAndRead(address onchainCounter) or withdrawAppFees()"
+            "Please call one of these external functions: deployAppGateway(), deployOnchainContract(), uploadAndRead(address onchainCounter) or withdrawAppFees()"
         );
     }
 
@@ -56,7 +56,7 @@ contract RunEVMxUpload is SetupScript {
         vm.stopBroadcast();
     }
 
-    function read(address onchainCounter_) external {
+    function uploadAndRead(address onchainCounter_) external {
         init();
         onchainCounter = onchainCounter_;
         _run(arbSepChainId);

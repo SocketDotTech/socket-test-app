@@ -261,7 +261,7 @@ forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --bro
 ### 5. **Upload and Read**
 Run the following command to upload the Counter contract to EVMx and read its value:
 ```bash
-forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "read(address)" <COUNTER_ADDRESS>
+forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "uploadAndRead(address)" <COUNTER_ADDRESS>
 ```
 
 ### 6. **Withdraw App Fees**
