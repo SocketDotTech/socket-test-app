@@ -85,12 +85,12 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @notice Handles incoming messages from OnchainTrigger contracts
      * @dev Processes different message types from OnchainTrigger contracts
      * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
-     * @param chainSlug_ The identifier of the source chain (unused)
-     * @param sourceAddress The address of the sender contract (unused)
+     *        chainSlug_ The identifier of the source chain (unused)
+     *        sourceAddress The address of the sender contract (unused)
      * @param payload_ The encoded message data containing the message type and payload
-     * @param msgId The transaction identifier (unused)
+     *        msgId The transaction identifier (unused)
      */
-    function callFromChain(uint32 chainSlug_, address sourceAddress, bytes calldata payload_, bytes32 msgId)
+    function callFromChain(uint32, address, bytes calldata payload_, bytes32)
         external
         override
         async
