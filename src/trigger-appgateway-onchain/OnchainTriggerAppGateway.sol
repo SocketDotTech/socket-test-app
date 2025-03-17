@@ -68,6 +68,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
     function initialize(uint32 chainSlug_) public override {
+        // TODO: call _setValidPlug instead of function below after new contract deployment to devnet
         setValidPlug(chainSlug_, onchainToEVMx, true);
     }
 
