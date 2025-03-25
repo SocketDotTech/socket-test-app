@@ -85,3 +85,68 @@ else
     exit 1
 fi
 
+# ---------------------- WITHDRAW FUNDS ----------------------
+
+# Get available fees from EVMX chain
+AVAILABLE_FEES_RAW=$(cast call "$FEES_MANAGER" \
+    "getAvailableFees(uint32,address,address)(uint256)" \
+    "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
+    --rpc-url "$EVMX_RPC")
+
+AVAILABLE_FEES=$(echo "$AVAILABLE_FEES_RAW" | awk '{print $1}')
+echo "Available fees: $AVAILABLE_FEES"
+
+# Ensure it's a valid integer before proceeding
+if ! [[ "$AVAILABLE_FEES" =~ ^[0-9]+$ ]]; then
+    echo "Error: Invalid available fees value: $AVAILABLE_FEES"
+    exit 1
+fi
+
+# Check if there are funds to withdraw
+if [ "$AVAILABLE_FEES" -gt 0 ]; then
+    # Fetch gas price on Arbitrum Sepolia
+    ARBITRUM_GAS_PRICE=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
+
+    # Add buffer to gas price
+    GAS_PRICE=$((ARBITRUM_GAS_PRICE + GAS_BUFFER))
+    ESTIMATED_GAS_COST=$((GAS_LIMIT * GAS_PRICE))
+
+    echo "Arbitrum gas price (wei): $ARBITRUM_GAS_PRICE"
+    echo "Gas limit: $GAS_LIMIT"
+    echo "Estimated gas cost: $ESTIMATED_GAS_COST"
+
+    # Calculate withdrawal amount
+    AMOUNT_TO_WITHDRAW=0
+    if [ "$AVAILABLE_FEES" -gt "$ESTIMATED_GAS_COST" ]; then
+        AMOUNT_TO_WITHDRAW=$((AVAILABLE_FEES - ESTIMATED_GAS_COST))
+    fi
+
+    if [ "$AMOUNT_TO_WITHDRAW" -gt 0 ]; then
+        echo "Withdrawing amount: $AMOUNT_TO_WITHDRAW"
+
+        # Withdraw funds from the contract
+        cast send "$APP_GATEWAY" \
+            --rpc-url "$EVMX_RPC" \
+            --private-key "$PRIVATE_KEY" \
+            --legacy \
+            --gas-price 0 \
+            "withdrawFeeTokens(uint32,address,uint256,address)" \
+            "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$AMOUNT_TO_WITHDRAW" "$SENDER_ADDRESS"
+
+        if [ $? -eq 0 ]; then
+            echo "Fees withdrawn successfully!"
+        else
+            echo "Error: Failed to withdraw fees."
+            exit 1
+        fi
+
+        # Check final balance after withdrawal
+        FINAL_BALANCE=$(cast balance "$SENDER_ADDRESS" --rpc-url "$ARBITRUM_SEPOLIA_RPC")
+        echo "Final sender balance: $FINAL_BALANCE"
+    else
+        echo "Available fees are less than estimated gas cost. Skipping withdrawal."
+    fi
+else
+    echo "No available fees to withdraw."
+fi
+
