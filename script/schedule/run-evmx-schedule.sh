@@ -71,3 +71,17 @@ fi
 
 echo "AppGateway deployed at: $APP_GATEWAY"
 
+# ---------------------- DEPOSIT FUNDS ----------------------
+cast send "$ARBITRUM_FEES_PLUG" \
+    --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
+    --private-key "$PRIVATE_KEY" \
+    --value "$FEES_AMOUNT" \
+    "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT"
+
+if [ $? -eq 0 ]; then
+    echo "Fees deposited successfully!"
+else
+    echo "Error: Failed to deposit fees."
+    exit 1
+fi
+
