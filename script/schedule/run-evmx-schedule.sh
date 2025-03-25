@@ -12,7 +12,7 @@ progress_bar() {
     local interval=$(echo "scale=2; $duration / $width" | bc)
 
     for ((i=0; i<=width; i++)); do
-        printf "\r${CYAN}Waiting 5 sec: [%-${width}s] %d%%${NC}" $(printf "#%.0s" $(seq 1 $i)) $((i*2))
+        printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" $(printf "#%.0s" $(seq 1 $i)) $((i*2))
         sleep $interval
     done
     printf "\n"
