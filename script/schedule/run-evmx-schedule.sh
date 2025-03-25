@@ -5,6 +5,19 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Progress Bar Function
+progress_bar() {
+    local duration=$1
+    local width=50
+    local interval=$(echo "scale=2; $duration / $width" | bc)
+
+    for ((i=0; i<=width; i++)); do
+        printf "\r${CYAN}Waiting 5 sec: [%-${width}s] %d%%${NC}" $(printf "#%.0s" $(seq 1 $i)) $((i*2))
+        sleep $interval
+    done
+    printf "\n"
+}
+
 # Function to validate environment and build contracts
 prepare_deployment() {
     echo -e "${CYAN}Building contracts${NC}"
@@ -167,9 +180,11 @@ main() {
     echo -e "${CYAN}Deploying AppGateway contract${NC}"
     #APP_GATEWAY=$(deploy_contract)
     echo "AppGateway: https://evmx.cloud.blockscout.com/address/$APP_GATEWAY"
+    progress_bar 5
 
     echo -e "${CYAN}Depositing funds${NC}"
     deposit_funds "$APP_GATEWAY"
+    progress_bar 5
 
     echo -e "${CYAN}Withdrawing funds${NC}"
     withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
