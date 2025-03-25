@@ -169,9 +169,62 @@ withdraw_funds() {
 # Function to read timeouts from the contract
 read_timeouts() {
     echo -e "${CYAN}Reading timeouts from the contract:${NC}"
-    for ((i=0; i<7; i++)); do
-        local timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $i --rpc-url "$EVMX_RPC")
-        echo -e "${YELLOW}Timeout $i: $timeout seconds${NC}"
+    export MAX_TIMEOUT=0
+    for ((i=0; i<3; i++)); do
+        timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $i --rpc-url "$EVMX_RPC")
+        echo -e "Timeout $i: $timeout seconds"
+
+        if [ "$timeout" -gt "$MAX_TIMEOUT" ]; then
+            MAX_TIMEOUT=$timeout
+        fi
+    done
+}
+
+# Function to trigger timeouts
+trigger_timeouts() {
+    echo -e "${CYAN}Triggering timeouts...${NC}"
+    local OUTPUT=$(cast send "$APP_GATEWAY" "triggerTimeouts()" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0)
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Failed to trigger timeouts.${NC}"
+        exit 1
+    fi
+}
+
+# Function to listen for TimeoutResolved events
+show_timeout_events() {
+    echo -e "${CYAN}Fetching TimeoutResolved events...${NC}"
+
+    # Fetch logs
+    logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "TimeoutResolved(uint256,uint256,uint256)")
+
+    # Count occurrences
+    event_count=$(echo "$logs" | grep -c "blockHash")
+
+    echo -e "${GREEN}Total TimeoutResolved events: $event_count${NC}"
+
+    # Decode and display event data
+    echo "$logs" | grep -E "data:" | while read -r line; do
+        data=$(echo "$line" | awk '{print $2}')
+
+        # Extract values from data
+        index="0x${data:2:64}"
+        creation_timestamp="0x${data:66:64}"
+        execution_timestamp="0x${data:130:64}"
+
+        # Convert from hex to decimal
+        index=$(cast to-dec "$index")
+        creation_timestamp=$(cast to-dec "$creation_timestamp")
+        execution_timestamp=$(cast to-dec "$execution_timestamp")
+
+        echo -e "${GREEN}Timeout Resolved:${NC}"
+        echo -e "  Index: $index"
+        echo -e "  Created at: $creation_timestamp"
+        echo -e "  Executed at: $execution_timestamp"
     done
 }
 
@@ -188,6 +241,10 @@ main() {
     deploy_contract
     progress_bar 5
     read_timeouts
+    trigger_timeouts
+    echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
+    progress_bar "$MAX_TIMEOUT"
+    show_timeout_events
 
     #deposit_funds "$APP_GATEWAY"
     #progress_bar 5
