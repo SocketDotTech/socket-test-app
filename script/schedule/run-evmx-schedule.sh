@@ -1,25 +1,30 @@
 #!/bin/bash
 
+# ANSI color codes
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
 # Function to validate environment and build contracts
 prepare_deployment() {
-    # Build contracts
+    echo -e "${CYAN}Building contracts${NC}"
     if ! forge build; then
-        echo "Error: forge build failed. Check your contract code."
+        echo -e "${RED}Error: forge build failed. Check your contract code.${NC}"
         exit 1
     fi
 
     # Check if .env exists and load it
     if [ -f ".env" ]; then
-        echo "Loading environment variables from .env"
+        echo -e "${CYAN}Loading environment variables from .env${NC}"
         source .env
     else
-        echo "Error: .env file not found!"
+        echo -e "${RED}Error: .env file not found!${NC}"
         exit 1
     fi
 
     # Ensure required variables are set
     if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ]; then
-        echo "Error: EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set."
+        echo -e "${RED}Error: EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set.${NC}"
         exit 1
     fi
 }
@@ -42,7 +47,7 @@ deploy_contract() {
 
     # Check if extraction was successful
     if [ -z "$APP_GATEWAY" ]; then
-        echo "Error: Failed to extract deployed address."
+        echo -e "${RED}Error: Failed to extract deployed address.${NC}"
         exit 1
     fi
 
@@ -62,13 +67,13 @@ deposit_funds() {
         "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT")
 
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to deposit fees."
+        echo -e "${RED}Error: Failed to deposit fees.${NC}"
         exit 1
     fi
 
     # Extract and return block hash
     local DEPOSIT_BLOCK_HASH=$(echo "$DEPOSIT_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')
-    echo "Deposit Block Hash: $DEPOSIT_BLOCK_HASH"
+    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$DEPOSIT_BLOCK_HASH"
 }
 
 # Function to withdraw funds and return block hash
@@ -86,7 +91,7 @@ withdraw_funds() {
 
     # Ensure it's a valid integer before proceeding
     if ! [[ "$AVAILABLE_FEES" =~ ^[0-9]+$ ]]; then
-        echo "Error: Invalid available fees value: $AVAILABLE_FEES"
+        echo -e "${RED}Error: Invalid available fees value: $AVAILABLE_FEES${NC}"
         exit 1
     fi
 
@@ -118,13 +123,13 @@ withdraw_funds() {
                 "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$AMOUNT_TO_WITHDRAW" "$SENDER_ADDRESS")
 
             if [ $? -ne 0 ]; then
-                echo "Error: Failed to withdraw fees."
+                echo -e "${RED}Error: Failed to withdraw fees.${NC}"
                 exit 1
             fi
 
             # Extract and return block hash
             local BLOCK_HASH=$(echo "$WITHDRAW_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')
-            echo "Withdraw Block Hash: $BLOCK_HASH"
+            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$BLOCK_HASH"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -152,21 +157,21 @@ main() {
     # Get sender address
     SENDER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
     if [ -z "$SENDER_ADDRESS" ]; then
-        echo "Error: Failed to derive sender address."
+        echo -e "${RED}Error: Failed to derive sender address.${NC}"
         exit 1
     fi
 
     # Add 2>/dev/null to suppress warnings
     exec 2>/dev/null
 
-    # Deploy contract and get block hash and address
-    APP_GATEWAY=$(deploy_contract)
-    echo "AppGateway: $APP_GATEWAY"
+    echo -e "${CYAN}Deploying AppGateway contract${NC}"
+    #APP_GATEWAY=$(deploy_contract)
+    echo "AppGateway: https://evmx.cloud.blockscout.com/address/$APP_GATEWAY"
 
-    # Deposit funds and get block hash
+    echo -e "${CYAN}Depositing funds${NC}"
     deposit_funds "$APP_GATEWAY"
 
-    # Withdraw funds and get block hash
+    echo -e "${CYAN}Withdrawing funds${NC}"
     withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
 }
 
