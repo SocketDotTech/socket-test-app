@@ -35,6 +35,15 @@ prepare_deployment() {
         exit 1
     fi
 
+    # Constants
+    export ARB_SEP_CHAIN_ID=421614
+    export ETH_ADDRESS=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+    export DEPLOY_FEES_AMOUNT=500000000000000  # 0.0005 ETH in wei
+    export FEES_AMOUNT="1000000000000000"  # 0.001 ETH in wei
+    export GAS_BUFFER="100000000"  # 0.1 Gwei in wei
+    export GAS_LIMIT="3000000"  # Gas limit estimate
+    export EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
+
     # Ensure required variables are set
     if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ]; then
         echo -e "${RED}Error: EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set.${NC}"
@@ -44,6 +53,7 @@ prepare_deployment() {
 
 # Function to deploy contract and return block hash
 deploy_contract() {
+    echo -e "${CYAN}Deploying AppGateway contract${NC}"
     local DEPLOY_OUTPUT=$(forge create src/schedule/ScheduleAppGateway.sol:ScheduleAppGateway \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
@@ -56,7 +66,7 @@ deploy_contract() {
         --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)")
 
     # Extract the deployed address
-    local APP_GATEWAY=$(echo "$DEPLOY_OUTPUT" | grep "Deployed to:" | awk '{print $3}')
+    local APP_GATEWAY_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep "Deployed to:" | awk '{print $3}')
 
     # Check if extraction was successful
     if [ -z "$APP_GATEWAY" ]; then
@@ -65,12 +75,14 @@ deploy_contract() {
     fi
 
     # Extract and return block hash
-    echo "$APP_GATEWAY"  # Return address for subsequent functions
+    echo -e "AppGateway: https://evmx.cloud.blockscout.com/address/$APP_GATEWAY_ADDRESS"
+    export APP_GATEWAY="$APP_GATEWAY_ADDRESS"
 }
 
 # Function to deposit funds and return block hash
 deposit_funds() {
     local APP_GATEWAY="$1"
+    echo -e "${CYAN}Depositing funds${NC}"
 
     # Deposit funds
     local DEPOSIT_OUTPUT=$(cast send "$ARBITRUM_FEES_PLUG" \
@@ -93,6 +105,7 @@ deposit_funds() {
 withdraw_funds() {
     local APP_GATEWAY="$1"
     local SENDER_ADDRESS="$2"
+    echo -e "${CYAN}Withdrawing funds${NC}"
 
     # Get available fees from EVMX chain
     local AVAILABLE_FEES_RAW=$(cast call "$FEES_MANAGER" \
@@ -153,20 +166,18 @@ withdraw_funds() {
     fi
 }
 
+# Function to read timeouts from the contract
+read_timeouts() {
+    echo -e "${CYAN}Reading timeouts from the contract:${NC}"
+    for ((i=0; i<7; i++)); do
+        local timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $i --rpc-url "$EVMX_RPC")
+        echo -e "${YELLOW}Timeout $i: $timeout seconds${NC}"
+    done
+}
+
 # Main execution
 main() {
-    # Constants
-    ARB_SEP_CHAIN_ID=421614
-    ETH_ADDRESS=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    DEPLOY_FEES_AMOUNT=500000000000000  # 0.0005 ETH in wei
-    FEES_AMOUNT="1000000000000000"  # 0.001 ETH in wei
-    GAS_BUFFER="100000000"  # 0.1 Gwei in wei
-    GAS_LIMIT="3000000"  # Gas limit estimate
-    EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
-
-    # Prepare deployment environment
     prepare_deployment
-
     # Get sender address
     SENDER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
     if [ -z "$SENDER_ADDRESS" ]; then
@@ -174,20 +185,13 @@ main() {
         exit 1
     fi
 
-    # Add 2>/dev/null to suppress warnings
-    exec 2>/dev/null
-
-    echo -e "${CYAN}Deploying AppGateway contract${NC}"
-    #APP_GATEWAY=$(deploy_contract)
-    echo "AppGateway: https://evmx.cloud.blockscout.com/address/$APP_GATEWAY"
+    deploy_contract
     progress_bar 5
+    read_timeouts
 
-    echo -e "${CYAN}Depositing funds${NC}"
-    deposit_funds "$APP_GATEWAY"
-    progress_bar 5
-
-    echo -e "${CYAN}Withdrawing funds${NC}"
-    withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
+    #deposit_funds "$APP_GATEWAY"
+    #progress_bar 5
+    #withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
 }
 
 # Run the main function
