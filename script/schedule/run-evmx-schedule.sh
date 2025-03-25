@@ -47,3 +47,27 @@ if [ -z "$BALANCE_WEI" ]; then
 fi
 
 echo "Sender balance in wei: $BALANCE_WEI"
+
+# ---------------------- DEPLOY CONTRACT ----------------------
+DEPLOY_OUTPUT=$(forge create src/schedule/ScheduleAppGateway.sol:ScheduleAppGateway \
+    --rpc-url "$EVMX_RPC" \
+    --private-key "$PRIVATE_KEY" \
+    --legacy \
+    --broadcast \
+    --gas-price 0 \
+    --verify \
+    --verifier-url "$EVMX_VERIFIER_URL" \
+    --verifier blockscout \
+    --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)")
+
+# Extract the deployed address
+APP_GATEWAY=$(echo "$DEPLOY_OUTPUT" | grep "Deployed to:" | awk '{print $3}')
+
+# Check if extraction was successful
+if [ -z "$APP_GATEWAY" ]; then
+    echo "Error: Failed to extract deployed address."
+    exit 1
+fi
+
+echo "AppGateway deployed at: $APP_GATEWAY"
+
