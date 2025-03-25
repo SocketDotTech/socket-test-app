@@ -218,6 +218,10 @@ show_timeout_events() {
 
     echo -e "${GREEN}Total TimeoutResolved events: $event_count${NC}"
 
+    if [ "$event_count" -ne "$NUMBER_OF_TIMEOUTS" ]; then
+        echo -e "${RED}Warning:${NC} Expected $NUMBER_OF_TIMEOUTS timeouts but found $event_count."
+    fi
+
     # Decode and display event data
     echo "$logs" | grep -E "data:" | while read -r line; do
         data=$(echo "$line" | awk '{print $2}')
