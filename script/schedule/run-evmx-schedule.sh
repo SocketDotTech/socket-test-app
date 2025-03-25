@@ -169,10 +169,21 @@ withdraw_funds() {
 # Function to read timeouts from the contract
 read_timeouts() {
     echo -e "${CYAN}Reading timeouts from the contract:${NC}"
+
     export MAX_TIMEOUT=0
-    for ((i=0; i<3; i++)); do
-        timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $i --rpc-url "$EVMX_RPC")
-        echo -e "Timeout $i: $timeout seconds"
+    export NUMBER_OF_TIMEOUTS=0
+
+    while true; do
+        timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $NUMBER_OF_TIMEOUTS \
+            --rpc-url "$EVMX_RPC" \
+            2>/dev/null)
+
+        if [ $? -ne 0 ] || [ -z "$timeout" ]; then
+            break
+        fi
+
+        echo -e "Timeout $NUMBER_OF_TIMEOUTS: $timeout seconds"
+        NUMBER_OF_TIMEOUTS=$((NUMBER_OF_TIMEOUTS+1))
 
         if [ "$timeout" -gt "$MAX_TIMEOUT" ]; then
             MAX_TIMEOUT=$timeout
@@ -239,7 +250,6 @@ main() {
     fi
 
     deploy_contract
-    progress_bar 5
     read_timeouts
     trigger_timeouts
     echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
