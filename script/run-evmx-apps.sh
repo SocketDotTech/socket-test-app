@@ -43,6 +43,7 @@ prepare_deployment() {
 
     # Constants
     export ARB_SEP_CHAIN_ID=421614
+    export OP_SEP_CHAIN_ID=11155420
     export ETH_ADDRESS=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     export DEPLOY_FEES_AMOUNT=500000000000000  # 0.0005 ETH in wei
     export FEES_AMOUNT="1000000000000000"  # 0.001 ETH in wei
@@ -57,7 +58,7 @@ prepare_deployment() {
     fi
 }
 
-# Function to deploy contract and return block hash
+# Function to deploy contract
 deploy_appgateway() {
     local filefolder=$1
     local filename=$2
@@ -87,9 +88,73 @@ deploy_appgateway() {
         exit 1
     fi
 
-    # Extract and return block hash
     echo -e "AppGateway: https://evmx.cloud.blockscout.com/address/$APP_GATEWAY_ADDRESS"
     export APP_GATEWAY="$APP_GATEWAY_ADDRESS"
+}
+
+# Function to deploy onchain contracts from chain id
+deploy_onchain() {
+    local chainid=$1
+    echo -e "${CYAN}Deploying onchain contracts${NC}"
+
+    echo -e "${CYAN}Deploying for chain id: $chainid${NC}"
+    local CALL_OUTPUT
+    if ! SEND_OUTPUT=$(cast send "$APP_GATEWAY" \
+        "deployContracts(uint32)" "$chainid" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error: Failed to deploy contract on Arbitrum Sepolia.${NC}"
+        exit 1
+    fi
+
+    local TX_HASH
+    TX_HASH=$(echo "$SEND_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
+    # Check if TX_HASH is empty or invalid
+    if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
+        echo "Extracted value: '$TX_HASH'"
+        exit 1
+    fi
+
+    echo "Deploy onchain Block Hash: https://evmx.cloud.blockscout.com/tx/$TX_HASH"
+}
+
+# Function to fetch forwarder address from chain id
+fetch_forwarder_address() {
+    local contractname=$1
+    local chainid=$2
+    echo -e "${CYAN}Fetching forwarder address${NC}"
+
+    local contractid
+    if ! contractid=$(cast call "$APP_GATEWAY" "$contractname()(bytes32)" \
+        --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error: Failed to retrieve $contractname identifier.${NC}"
+        return 1
+    fi
+
+    local FORWARDER
+    if ! FORWARDER=$(cast call "$APP_GATEWAY" \
+        "forwarderAddresses(bytes32,uint32)(address)" \
+        "$contractid" "$chainid" \
+        --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error: Failed to retrieve forwarder address for chain $chainid.${NC}"
+        exit 1
+    fi
+
+    # Output results
+    echo -e "${GREEN}Forwarder for chain $chainid: $FORWARDER${NC}"
+
+    # Export the appropriate forwarder based on chain ID
+    if [ "$chainid" -eq "$ARB_SEP_CHAIN_ID" ]; then
+        export ARB_FORWARDER="$FORWARDER"
+    elif [ "$chainid" -eq "$OP_SEP_CHAIN_ID" ]; then
+        export OP_FORWARDER="$FORWARDER"
+    else
+        echo -e "${RED}Warning: Unknown chain ID $chainid. Forwarder not exported.${NC}"
+        exit 1
+    fi
 }
 
 # Function to deposit funds
@@ -108,10 +173,8 @@ deposit_funds() {
         exit 1
     fi
 
-    # Extract transactionHash (top-level, not from logs)
     local TX_HASH
     TX_HASH=$(echo "$DEPOSIT_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
-
     # Check if TX_HASH is empty or invalid
     if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         echo -e "${RED}Error: Failed to extract valid transactionHash from deposit output.${NC}"
@@ -179,10 +242,8 @@ withdraw_funds() {
                 exit 1
             fi
 
-            # Extract transactionHash (top-level, not from logs)
             local TX_HASH
             TX_HASH=$(echo "$WITHDRAW_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
-
             # Check if TX_HASH is empty or invalid
             if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
                 echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
@@ -288,16 +349,24 @@ main() {
         exit 1
     fi
 
-    deploy_appgateway ScheduleAppGateway
+    deploy_appgateway write WriteAppGateway
+    deposit_funds "$APP_GATEWAY"
+    progress_bar 5
+    deploy_onchain $ARB_SEP_CHAIN_ID
+    deploy_onchain $OP_SEP_CHAIN_ID
+    progress_bar 10
+    fetch_forwarder_address 'multichain' $ARB_SEP_CHAIN_ID
+    fetch_forwarder_address 'multichain' $OP_SEP_CHAIN_ID
+    withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
+
+    # TODO: Remove this exit
+    exit 0
+    deploy_appgateway schedule ScheduleAppGateway
     read_timeouts
     trigger_timeouts
     echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
     progress_bar "$MAX_TIMEOUT"
     show_timeout_events
-
-    #deposit_funds "$APP_GATEWAY"
-    #progress_bar 5
-    #withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
 }
 
 # Run the main function
