@@ -16,7 +16,8 @@ progress_bar() {
         # Calculate percentage based on current progress
         local percent=$(( (i * 100) / width ))
         # Create the bar string with # characters
-        local bar=$(printf "#%.0s" $(seq 1 $i))
+        local bar
+        bar=$(printf "#%.0s" $(seq 1 $i))
         # Pad the bar with spaces to maintain fixed width
         printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" "$bar" "$percent"
         sleep "$interval"
@@ -90,6 +91,21 @@ deploy_appgateway() {
 
     echo -e "AppGateway: https://evmx.cloud.blockscout.com/address/$appgateway"
     export APP_GATEWAY="$appgateway"
+}
+
+# Helper function to parse and print the txhash
+function parse_txhash() {
+    local output=$1
+    local txhash
+    txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
+    # Check if txhash is empty or invalid
+    if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}Error: Failed to extract valid transactionHash from output.${NC}"
+        echo "Extracted value: '$txhash'"
+        exit 1
+    fi
+
+    echo "Tx Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
 }
 
 # Function to deploy onchain contracts from chain id
@@ -239,16 +255,7 @@ withdraw_funds() {
                 exit 1
             fi
 
-            local txhash
-            txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
-            # Check if txhash is empty or invalid
-            if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-                echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
-                echo "Extracted value: '$txhash'"
-                exit 1
-            fi
-
-            echo "Withdraw Tx Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
+            parse_txhash "$output"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -265,8 +272,8 @@ run_write_tests() {
 
     # 1. Trigger Sequential Write
     echo -e "${CYAN}triggerSequentialWrite...${NC}"
-    local seq_output
-    if ! seq_output=$(cast send "$APP_GATEWAY" \
+    local output
+    if ! output=$(cast send "$APP_GATEWAY" \
         "triggerSequentialWrite(address)" "$OP_FORWARDER" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
@@ -275,19 +282,11 @@ run_write_tests() {
         echo -e "${RED}Error: Failed to trigger sequential write${NC}"
         return 1
     fi
-    local seq_tx_hash
-    seq_tx_hash=$(echo "$seq_output" | grep "^transactionHash" | awk '{print $2}')
-    if [ -z "$seq_tx_hash" ] || ! [[ "$seq_tx_hash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error: Failed to extract valid transactionHash from sequential write${NC}"
-        echo "Extracted value: '$seq_tx_hash'"
-        return 1
-    fi
-    echo "Sequential Write Tx Hash: https://evmx.cloud.blockscout.com/tx/$seq_tx_hash"
+    parse_txhash "$output"
 
     # 2. Trigger Parallel Write
     echo -e "${CYAN}triggerParallelWrite...${NC}"
-    local par_output
-    if ! par_output=$(cast send "$APP_GATEWAY" \
+    if ! output=$(cast send "$APP_GATEWAY" \
         "triggerParallelWrite(address)" "$ARB_FORWARDER" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
@@ -296,19 +295,11 @@ run_write_tests() {
         echo -e "${RED}Error: Failed to trigger parallel write${NC}"
         return 1
     fi
-    local par_tx_hash
-    par_tx_hash=$(echo "$par_output" | grep "^transactionHash" | awk '{print $2}')
-    if [ -z "$par_tx_hash" ] || ! [[ "$par_tx_hash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error: Failed to extract valid transactionHash from parallel write${NC}"
-        echo "Extracted value: '$par_tx_hash'"
-        return 1
-    fi
-    echo "Parallel Write Tx Hash: https://evmx.cloud.blockscout.com/tx/$par_tx_hash"
+    parse_txhash "$output"
 
     # 3. Trigger Alternating Write between chains
     echo -e "${CYAN}triggerAltWrite...${NC}"
-    local alt_output
-    if ! alt_output=$(cast send "$APP_GATEWAY" \
+    if ! output=$(cast send "$APP_GATEWAY" \
         "triggerAltWrite(address,address)" "$OP_FORWARDER" "$ARB_FORWARDER" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
@@ -317,14 +308,7 @@ run_write_tests() {
         echo -e "${RED}Error: Failed to trigger alternating write${NC}"
         return 1
     fi
-    local alt_tx_hash
-    alt_tx_hash=$(echo "$alt_output" | grep "^transactionHash" | awk '{print $2}')
-    if [ -z "$alt_tx_hash" ] || ! [[ "$alt_tx_hash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error: Failed to extract valid transactionHash from alternating write${NC}"
-        echo "Extracted value: '$alt_tx_hash'"
-        return 1
-    fi
-    echo "Alternating Write Tx Hash: https://evmx.cloud.blockscout.com/tx/$alt_tx_hash"
+    parse_txhash "$output"
 
     echo -e "${CYAN}All triggers executed successfully${NC}"
 }
