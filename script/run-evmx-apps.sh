@@ -118,7 +118,7 @@ deploy_onchain() {
         exit 1
     fi
 
-    echo "Deploy onchain Block Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
+    echo "Deploy onchain Tx Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
 }
 
 # Function to fetch forwarder address from chain id
@@ -181,7 +181,7 @@ deposit_funds() {
         exit 1
     fi
 
-    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$txhash"
+    echo "Deposit Tx Hash: https://arbitrum-sepolia.blockscout.com/tx/$txhash"
 }
 
 # Function to withdraw funds
@@ -248,7 +248,7 @@ withdraw_funds() {
                 exit 1
             fi
 
-            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
+            echo "Withdraw Tx Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -257,6 +257,76 @@ withdraw_funds() {
         echo "No available fees to withdraw."
         exit 0
     fi
+}
+
+# Function to run all write tests
+run_write_tests() {
+    echo -e "${CYAN}Running all write tests functions...${NC}"
+
+    # 1. Trigger Sequential Write
+    echo -e "${CYAN}triggerSequentialWrite...${NC}"
+    local seq_output
+    if ! seq_output=$(cast send "$APP_GATEWAY" \
+        "triggerSequentialWrite(address)" "$OP_FORWARDER" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error: Failed to trigger sequential write${NC}"
+        return 1
+    fi
+    local seq_tx_hash
+    seq_tx_hash=$(echo "$seq_output" | grep "^transactionHash" | awk '{print $2}')
+    if [ -z "$seq_tx_hash" ] || ! [[ "$seq_tx_hash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}Error: Failed to extract valid transactionHash from sequential write${NC}"
+        echo "Extracted value: '$seq_tx_hash'"
+        return 1
+    fi
+    echo "Sequential Write Tx Hash: https://evmx.cloud.blockscout.com/tx/$seq_tx_hash"
+
+    # 2. Trigger Parallel Write
+    echo -e "${CYAN}triggerParallelWrite...${NC}"
+    local par_output
+    if ! par_output=$(cast send "$APP_GATEWAY" \
+        "triggerParallelWrite(address)" "$ARB_FORWARDER" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error: Failed to trigger parallel write${NC}"
+        return 1
+    fi
+    local par_tx_hash
+    par_tx_hash=$(echo "$par_output" | grep "^transactionHash" | awk '{print $2}')
+    if [ -z "$par_tx_hash" ] || ! [[ "$par_tx_hash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}Error: Failed to extract valid transactionHash from parallel write${NC}"
+        echo "Extracted value: '$par_tx_hash'"
+        return 1
+    fi
+    echo "Parallel Write Tx Hash: https://evmx.cloud.blockscout.com/tx/$par_tx_hash"
+
+    # 3. Trigger Alternating Write between chains
+    echo -e "${CYAN}triggerAltWrite...${NC}"
+    local alt_output
+    if ! alt_output=$(cast send "$APP_GATEWAY" \
+        "triggerAltWrite(address,address)" "$OP_FORWARDER" "$ARB_FORWARDER" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error: Failed to trigger alternating write${NC}"
+        return 1
+    fi
+    local alt_tx_hash
+    alt_tx_hash=$(echo "$alt_output" | grep "^transactionHash" | awk '{print $2}')
+    if [ -z "$alt_tx_hash" ] || ! [[ "$alt_tx_hash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}Error: Failed to extract valid transactionHash from alternating write${NC}"
+        echo "Extracted value: '$alt_tx_hash'"
+        return 1
+    fi
+    echo "Alternating Write Tx Hash: https://evmx.cloud.blockscout.com/tx/$alt_tx_hash"
+
+    echo -e "${CYAN}All triggers executed successfully${NC}"
 }
 
 # Function to read timeouts from the contract
@@ -354,6 +424,7 @@ main() {
     progress_bar 10
     fetch_forwarder_address 'multichain' $ARB_SEP_CHAIN_ID
     fetch_forwarder_address 'multichain' $OP_SEP_CHAIN_ID
+    run_write_tests
     withdraw_funds
 
     # TODO: Remove this exit
