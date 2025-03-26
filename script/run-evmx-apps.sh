@@ -13,7 +13,12 @@ progress_bar() {
     interval=$(echo "scale=2; $duration / $width" | bc)
 
     for ((i=0; i<=width; i++)); do
-        printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" "$(printf "#%.0s" $(seq 1 $i)) $((i*2))"
+        # Calculate percentage based on current progress
+        local percent=$(( (i * 100) / width ))
+        # Create the bar string with # characters
+        local bar=$(printf "#%.0s" $(seq 1 $i))
+        # Pad the bar with spaces to maintain fixed width
+        printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" "$bar" "$percent"
         sleep "$interval"
     done
     printf "\n"
