@@ -424,6 +424,38 @@ run_write_tests() {
     verify_write_events
 }
 
+# Function to run all read tests
+run_read_tests() {
+    echo -e "${CYAN}Running all read tests functions...${NC}"
+    # 1. Trigger Parallel Write
+    echo -e "${CYAN}triggerParallelRead...${NC}"
+    if ! output=$(cast send "$APP_GATEWAY" \
+        "triggerParallelRead(address)" "$ARB_FORWARDER" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error: Failed to trigger parallel read${NC}"
+        return 1
+    fi
+    parse_txhash "$output"
+    await_events 10
+
+    # 2. Trigger Alternating Write between chains
+    echo -e "${CYAN}triggerAltRead...${NC}"
+    if ! output=$(cast send "$APP_GATEWAY" \
+        "triggerAltRead(address,address)" "$OP_FORWARDER" "$ARB_FORWARDER" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error: Failed to trigger alternating read${NC}"
+        return 1
+    fi
+    parse_txhash "$output"
+    await_events 20 "ValueRead(address,uint256,uint256)"
+}
+
 # Function to read timeouts from the contract
 read_timeouts() {
     echo -e "${CYAN}Reading timeouts from the contract:${NC}"
@@ -511,25 +543,39 @@ main() {
         exit 1
     fi
 
-    deploy_appgateway write WriteAppGateway
-    deposit_funds
-    progress_bar 3
-    deploy_onchain $ARB_SEP_CHAIN_ID
-    deploy_onchain $OP_SEP_CHAIN_ID
-    progress_bar 10
-    fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
-    fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
-    run_write_tests
-    withdraw_funds
+    if true; then
+        ##### WRITE TESTS #####
+        deploy_appgateway write WriteAppGateway
+        deposit_funds
+        progress_bar 3
+        deploy_onchain $ARB_SEP_CHAIN_ID
+        deploy_onchain $OP_SEP_CHAIN_ID
+        progress_bar 10
+        fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
+        fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
+        run_write_tests
+        withdraw_funds
 
-    # TODO: Remove this exit
-    exit 0
-    deploy_appgateway schedule ScheduleAppGateway
-    read_timeouts
-    trigger_timeouts
-    echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
-    progress_bar "$MAX_TIMEOUT"
-    show_timeout_events
+        ##### READ TESTS #####
+        deploy_appgateway read ReadAppGateway
+        deposit_funds
+        progress_bar 3
+        deploy_onchain $ARB_SEP_CHAIN_ID
+        deploy_onchain $OP_SEP_CHAIN_ID
+        progress_bar 10
+        fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
+        fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
+        run_read_tests
+        withdraw_funds
+
+        ##### SCHEDULER TESTS #####
+        deploy_appgateway schedule ScheduleAppGateway
+        read_timeouts
+        trigger_timeouts
+        echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
+        progress_bar "$MAX_TIMEOUT"
+        show_timeout_events
+    fi
 }
 
 # Run the main function
