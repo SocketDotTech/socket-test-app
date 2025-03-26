@@ -267,21 +267,21 @@ withdraw_funds() {
     fi
 }
 
-# Function to fetch and compare CounterIncreased and CounterIncreasedTo event logs
+# Function to fetch EVMx event logs
 await_events() {
-    local expected_new_events=$1  # Number of new events to expect (10)
-    local instance=$2             # know what to fetch
+    local expected_new_events=$1  # Number of new events to expect
+    local event=$2                # Event ABI
     local timeout=60              # Maximum wait time in seconds
     local interval=2              # Check every 2 seconds
     local elapsed=0               # Time elapsed
 
-    echo -e "${CYAN}Fetching and comparing CounterIncreased logs for $expected_new_events new events (waiting up to $timeout seconds)...${NC}"
+    echo -e "${CYAN}Waiting logs for $expected_new_events new events (waiting up to $timeout seconds)...${NC}"
 
     local logs_evmx
     local event_count_evmx
 
     while [ "$elapsed" -lt "$timeout" ]; do
-        evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
+        evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "$event")
         event_count_evmx=$(echo "$evmx_logs" | grep -c "blockHash")
 
         if [ -n "$event_count_evmx" ] && [ "$event_count_evmx" -ge "$expected_new_events" ]; then
@@ -392,7 +392,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-    await_events 10
+    await_events 10 "CounterIncreased(address,uint256,uint256)"
 
     # 2. Trigger Parallel Write
     echo -e "${CYAN}triggerParallelWrite...${NC}"
@@ -406,7 +406,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-    await_events 20
+    await_events 20 "CounterIncreased(address,uint256,uint256)"
 
     # 3. Trigger Alternating Write between chains
     echo -e "${CYAN}triggerAltWrite...${NC}"
@@ -420,7 +420,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-    await_events 30
+    await_events 30 "CounterIncreased(address,uint256,uint256)"
     verify_write_events
 }
 
