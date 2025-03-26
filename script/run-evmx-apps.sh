@@ -63,8 +63,8 @@ deploy_appgateway() {
     local filefolder=$1
     local filename=$2
     echo -e "${CYAN}Deploying $filename contract${NC}"
-    local DEPLOY_OUTPUT
-    if ! DEPLOY_OUTPUT=$(forge create src/"$filefolder"/"$filename".sol:"$filename" \
+    local output
+    if ! output=$(forge create src/"$filefolder"/"$filename".sol:"$filename" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
         --legacy \
@@ -79,17 +79,17 @@ deploy_appgateway() {
     fi
 
     # Extract the deployed address
-    local APP_GATEWAY_ADDRESS
-    APP_GATEWAY_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep "Deployed to:" | awk '{print $3}')
+    local appgateway
+    appgateway=$(echo "$output" | grep "Deployed to:" | awk '{print $3}')
 
     # Check if extraction was successful
-    if [ -z "$APP_GATEWAY_ADDRESS" ]; then
+    if [ -z "$appgateway" ]; then
         echo -e "${RED}Error: Failed to extract deployed address.${NC}"
         exit 1
     fi
 
-    echo -e "AppGateway: https://evmx.cloud.blockscout.com/address/$APP_GATEWAY_ADDRESS"
-    export APP_GATEWAY="$APP_GATEWAY_ADDRESS"
+    echo -e "AppGateway: https://evmx.cloud.blockscout.com/address/$appgateway"
+    export APP_GATEWAY="$appgateway"
 }
 
 # Function to deploy onchain contracts from chain id
@@ -98,8 +98,8 @@ deploy_onchain() {
     echo -e "${CYAN}Deploying onchain contracts${NC}"
 
     echo -e "${CYAN}Deploying for chain id: $chainid${NC}"
-    local CALL_OUTPUT
-    if ! SEND_OUTPUT=$(cast send "$APP_GATEWAY" \
+    local output
+    if ! output=$(cast send "$APP_GATEWAY" \
         "deployContracts(uint32)" "$chainid" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
@@ -109,16 +109,16 @@ deploy_onchain() {
         exit 1
     fi
 
-    local TX_HASH
-    TX_HASH=$(echo "$SEND_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
-    # Check if TX_HASH is empty or invalid
-    if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+    local txhash
+    txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
+    # Check if txhash is empty or invalid
+    if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
-        echo "Extracted value: '$TX_HASH'"
+        echo "Extracted value: '$txhash'"
         exit 1
     fi
 
-    echo "Deploy onchain Block Hash: https://evmx.cloud.blockscout.com/tx/$TX_HASH"
+    echo "Deploy onchain Block Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
 }
 
 # Function to fetch forwarder address from chain id
@@ -134,8 +134,8 @@ fetch_forwarder_address() {
         return 1
     fi
 
-    local FORWARDER
-    if ! FORWARDER=$(cast call "$APP_GATEWAY" \
+    local output
+    if ! output=$(cast call "$APP_GATEWAY" \
         "forwarderAddresses(bytes32,uint32)(address)" \
         "$contractid" "$chainid" \
         --rpc-url "$EVMX_RPC"); then
@@ -144,13 +144,13 @@ fetch_forwarder_address() {
     fi
 
     # Output results
-    echo -e "${GREEN}Forwarder for chain $chainid: $FORWARDER${NC}"
+    echo -e "${GREEN}Forwarder for chain $chainid: $output${NC}"
 
     # Export the appropriate forwarder based on chain ID
     if [ "$chainid" -eq "$ARB_SEP_CHAIN_ID" ]; then
-        export ARB_FORWARDER="$FORWARDER"
+        export ARB_FORWARDER="$output"
     elif [ "$chainid" -eq "$OP_SEP_CHAIN_ID" ]; then
-        export OP_FORWARDER="$FORWARDER"
+        export OP_FORWARDER="$output"
     else
         echo -e "${RED}Warning: Unknown chain ID $chainid. Forwarder not exported.${NC}"
         exit 1
@@ -159,12 +159,11 @@ fetch_forwarder_address() {
 
 # Function to deposit funds
 deposit_funds() {
-    local APP_GATEWAY="$1"
     echo -e "${CYAN}Depositing funds${NC}"
 
     # Deposit funds
-    local DEPOSIT_OUTPUT
-    if ! DEPOSIT_OUTPUT=$(cast send "$ARBITRUM_FEES_PLUG" \
+    local output
+    if ! output=$(cast send "$ARBITRUM_FEES_PLUG" \
         --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
         --private-key "$PRIVATE_KEY" \
         --value "$FEES_AMOUNT" \
@@ -173,27 +172,25 @@ deposit_funds() {
         exit 1
     fi
 
-    local TX_HASH
-    TX_HASH=$(echo "$DEPOSIT_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
-    # Check if TX_HASH is empty or invalid
-    if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+    local txhash
+    txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
+    # Check if txhash is empty or invalid
+    if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         echo -e "${RED}Error: Failed to extract valid transactionHash from deposit output.${NC}"
-        echo "Extracted value: '$TX_HASH'"
+        echo "Extracted value: '$txhash'"
         exit 1
     fi
 
-    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$TX_HASH"
+    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$txhash"
 }
 
 # Function to withdraw funds
 withdraw_funds() {
-    local APP_GATEWAY="$1"
-    local SENDER_ADDRESS="$2"
     echo -e "${CYAN}Withdrawing funds${NC}"
 
     # Get available fees from EVMX chain
-    local AVAILABLE_FEES_RAW
-    if ! AVAILABLE_FEES_RAW=$(cast call "$FEES_MANAGER" \
+    local output
+    if ! output=$(cast call "$FEES_MANAGER" \
         "getAvailableFees(uint32,address,address)(uint256)" \
         "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
         --rpc-url "$EVMX_RPC"); then
@@ -201,57 +198,57 @@ withdraw_funds() {
         exit 1
     fi
 
-    local AVAILABLE_FEES
-    AVAILABLE_FEES=$(echo "$AVAILABLE_FEES_RAW" | awk '{print $1}')
+    local available_fees
+    available_fees=$(echo "$output" | awk '{print $1}')
 
     # Ensure it's a valid integer before proceeding
-    if ! [[ "$AVAILABLE_FEES" =~ ^[0-9]+$ ]]; then
-        echo -e "${RED}Error: Invalid available fees value: $AVAILABLE_FEES${NC}"
+    if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}Error: Invalid available fees value: $available_fees${NC}"
         exit 1
     fi
 
-    echo "Available Fees: $AVAILABLE_FEES wei"
+    echo "Available Fees: $available_fees wei"
 
     # Check if there are funds to withdraw
-    if [ "$AVAILABLE_FEES" -gt 0 ]; then
+    if [ "$available_fees" -gt 0 ]; then
         # Fetch gas price on Arbitrum Sepolia
-        local ARBITRUM_GAS_PRICE
-        ARBITRUM_GAS_PRICE=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
+        local arb_gas_price
+        arb_gas_price=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
 
         # Add buffer to gas price
-        local GAS_PRICE=$((ARBITRUM_GAS_PRICE + GAS_BUFFER))
-        local ESTIMATED_GAS_COST=$((GAS_LIMIT * GAS_PRICE))
+        local gas_price=$((arb_gas_price + GAS_BUFFER))
+        local estimated_gas_cost=$((GAS_LIMIT * gas_price))
 
         # Calculate withdrawal amount
-        local AMOUNT_TO_WITHDRAW=0
-        if [ "$AVAILABLE_FEES" -gt "$ESTIMATED_GAS_COST" ]; then
-            AMOUNT_TO_WITHDRAW=$((AVAILABLE_FEES - ESTIMATED_GAS_COST))
+        local amount_to_withdraw=0
+        if [ "$available_fees" -gt "$estimated_gas_cost" ]; then
+            amount_to_withdraw=$((available_fees - estimated_gas_cost))
         fi
 
-        if [ "$AMOUNT_TO_WITHDRAW" -gt 0 ]; then
+        if [ "$amount_to_withdraw" -gt 0 ]; then
             # Withdraw funds from the contract
-            local WITHDRAW_OUTPUT
-            if ! WITHDRAW_OUTPUT=$(cast send "$APP_GATEWAY" \
+            local output
+            if ! output=$(cast send "$APP_GATEWAY" \
                 --rpc-url "$EVMX_RPC" \
                 --private-key "$PRIVATE_KEY" \
                 --legacy \
                 --gas-price 0 \
                 "withdrawFeeTokens(uint32,address,uint256,address)" \
-                "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$AMOUNT_TO_WITHDRAW" "$SENDER_ADDRESS"); then
+                "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$amount_to_withdraw" "$SENDER_ADDRESS"); then
                 echo -e "${RED}Error: Failed to withdraw fees.${NC}"
                 exit 1
             fi
 
-            local TX_HASH
-            TX_HASH=$(echo "$WITHDRAW_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
-            # Check if TX_HASH is empty or invalid
-            if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+            local txhash
+            txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
+            # Check if txhash is empty or invalid
+            if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
                 echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
-                echo "Extracted value: '$TX_HASH'"
+                echo "Extracted value: '$txhash'"
                 exit 1
             fi
 
-            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$TX_HASH"
+            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -350,14 +347,14 @@ main() {
     fi
 
     deploy_appgateway write WriteAppGateway
-    deposit_funds "$APP_GATEWAY"
+    deposit_funds
     progress_bar 5
     deploy_onchain $ARB_SEP_CHAIN_ID
     deploy_onchain $OP_SEP_CHAIN_ID
     progress_bar 10
     fetch_forwarder_address 'multichain' $ARB_SEP_CHAIN_ID
     fetch_forwarder_address 'multichain' $OP_SEP_CHAIN_ID
-    withdraw_funds "$APP_GATEWAY" "$SENDER_ADDRESS"
+    withdraw_funds
 
     # TODO: Remove this exit
     exit 0
