@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # ANSI color codes
+GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
@@ -19,7 +20,7 @@ progress_bar() {
         local bar
         bar=$(printf "#%.0s" $(seq 1 $i))
         # Pad the bar with spaces to maintain fixed width
-        printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" "$bar" "$percent"
+        printf "\rWaiting $duration sec: [%-${width}s] %d%%$" "$bar" "$percent"
         sleep "$interval"
     done
     printf "\n"
@@ -158,8 +159,8 @@ fetch_forwarder_and_onchain_address() {
         exit 1
     fi
 
-    echo -e "${GREEN}Forwarder for chain $chainid: $forwarder${NC}"
-    echo -e "${GREEN}Onchain for chain $chainid: $onchain${NC}"
+    echo "Forwarder for chain $chainid: $forwarder"
+    echo "Onchain for chain $chainid: $onchain"
     if [ "$chainid" -eq "$ARB_SEP_CHAIN_ID" ]; then
         export ARB_FORWARDER="$forwarder"
         export ARB_ONCHAIN="$onchain"
@@ -265,10 +266,84 @@ withdraw_funds() {
     fi
 }
 
+# Global variable to track total events seen so far
+TOTAL_EVENTS_SEEN=0
+
+# Function to fetch and compare CounterIncreased and CounterIncreasedTo event logs
+fetch_and_compare_logs() {
+    local expected_new_events=$1  # Number of new events to expect (10)
+    local instance=$2             # know what to fetch
+    local timeout=60              # Maximum wait time in seconds
+    local interval=2              # Check every 2 seconds
+    local elapsed=0               # Time elapsed
+
+    echo -e "${CYAN}Fetching and comparing CounterIncreased logs for $expected_new_events new events (waiting up to $timeout seconds)...${NC}"
+
+    local logs_evmx
+    local event_count_evmx
+    local target_total_events=$((TOTAL_EVENTS_SEEN + expected_new_events))
+
+    while [ "$elapsed" -lt "$timeout" ]; do
+        logs_evmx=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
+        event_count_evmx=$(echo "$logs_evmx" | grep -c "blockHash")
+
+        if [ "$event_count_evmx" -ge "$target_total_events" ]; then
+            echo "Total CounterIncreased events on EVMx: $event_count_evmx (reached expected $target_total_events)"
+            break
+        fi
+
+        echo "Waiting for $target_total_events logs on EVMx... Current count: $event_count_evmx (Elapsed: $elapsed/$timeout sec)"
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+    done
+
+    if [ "$event_count_evmx" -lt "$target_total_events" ]; then
+        echo -e "${RED}Error:${NC} Timed out after $timeout seconds. Expected $target_total_events CounterIncreased logs on EVMx, but found $event_count_evmx."
+        exit 1
+    fi
+
+    # Fetch logs from WriteMultichain instances
+    local logs
+    local event_count
+
+    case "$instance" in
+        "arb")
+            logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
+            event_count=$(echo "$logs" | grep -c "blockHash")
+            echo "Total CounterIncreasedTo events: $event_count"
+            ;;
+
+        "op")
+            logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
+            event_count=$(echo "$logs" | grep -c "blockHash")
+            echo "Total CounterIncreasedTo events: $event_count"
+            ;;
+
+        "both")
+            # Collect logs for both Arbitrum and Optimism
+            local arb_logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
+            local op_logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
+
+            local arb_event_count=$(echo "$arb_logs" | grep -c "blockHash")
+            local op_event_count=$(echo "$op_logs" | grep -c "blockHash")
+
+            event_count=$(( arb_event_count + op_event_count))
+            echo "Total CounterIncreasedTo events: $event_count"
+            ;;
+
+        *)
+            echo "Error: Invalid instance. Use 'arb', 'op', or 'both'."
+            return 1
+            ;;
+    esac
+
+    # Update the total events seen
+    TOTAL_EVENTS_SEEN="$event_count_evmx"
+}
+
 # Function to run all write tests
 run_write_tests() {
     echo -e "${CYAN}Running all write tests functions...${NC}"
-
     # 1. Trigger Sequential Write
     echo -e "${CYAN}triggerSequentialWrite...${NC}"
     local output
@@ -282,6 +357,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
+    fetch_and_compare_logs 10 op
 
     # 2. Trigger Parallel Write
     echo -e "${CYAN}triggerParallelWrite...${NC}"
@@ -295,6 +371,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
+    fetch_and_compare_logs 10 arb
 
     # 3. Trigger Alternating Write between chains
     echo -e "${CYAN}triggerAltWrite...${NC}"
@@ -308,8 +385,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-
-    echo -e "${CYAN}All triggers executed successfully${NC}"
+    fetch_and_compare_logs 10 both
 }
 
 # Function to read timeouts from the contract
