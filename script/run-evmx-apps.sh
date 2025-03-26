@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # ANSI color codes
+YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
@@ -138,7 +139,7 @@ fetch_forwarder_and_onchain_address() {
     if ! contractid=$(cast call "$APP_GATEWAY" "$contractname()(bytes32)" \
         --rpc-url "$EVMX_RPC"); then
         echo -e "${RED}Error: Failed to retrieve $contractname identifier.${NC}"
-        return 1
+        exit 1
     fi
 
     local forwarder
@@ -266,11 +267,8 @@ withdraw_funds() {
     fi
 }
 
-# Global variable to track total events seen so far
-TOTAL_EVENTS_SEEN=0
-
 # Function to fetch and compare CounterIncreased and CounterIncreasedTo event logs
-fetch_and_compare_logs() {
+await_events() {
     local expected_new_events=$1  # Number of new events to expect (10)
     local instance=$2             # know what to fetch
     local timeout=60              # Maximum wait time in seconds
@@ -281,64 +279,101 @@ fetch_and_compare_logs() {
 
     local logs_evmx
     local event_count_evmx
-    local target_total_events=$((TOTAL_EVENTS_SEEN + expected_new_events))
 
     while [ "$elapsed" -lt "$timeout" ]; do
-        logs_evmx=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
-        event_count_evmx=$(echo "$logs_evmx" | grep -c "blockHash")
+        evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
+        event_count_evmx=$(echo "$evmx_logs" | grep -c "blockHash")
 
-        if [ "$event_count_evmx" -ge "$target_total_events" ]; then
-            echo "Total CounterIncreased events on EVMx: $event_count_evmx (reached expected $target_total_events)"
+        if [ -n "$event_count_evmx" ] && [ "$event_count_evmx" -ge "$expected_new_events" ]; then
+            echo "Total CounterIncreased events on EVMx: $event_count_evmx (reached expected $expected_new_events)"
             break
         fi
 
-        echo "Waiting for $target_total_events logs on EVMx... Current count: $event_count_evmx (Elapsed: $elapsed/$timeout sec)"
+        echo "Waiting for $expected_new_events logs on EVMx... Current count: $event_count_evmx (Elapsed: $elapsed/$timeout sec)"
         sleep "$interval"
         elapsed=$((elapsed + interval))
     done
 
-    if [ "$event_count_evmx" -lt "$target_total_events" ]; then
-        echo -e "${RED}Error:${NC} Timed out after $timeout seconds. Expected $target_total_events CounterIncreased logs on EVMx, but found $event_count_evmx."
+    if [ "$event_count_evmx" -lt "$expected_new_events" ]; then
+        echo -e "${RED}Error:${NC} Timed out after $timeout seconds. Expected $expected_new_events CounterIncreased logs on EVMx, but found $event_count_evmx."
         exit 1
     fi
 
-    # Fetch logs from WriteMultichain instances
-    local logs
-    local event_count
+}
 
-    case "$instance" in
-        "arb")
-            logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
-            event_count=$(echo "$logs" | grep -c "blockHash")
-            echo "Total CounterIncreasedTo events: $event_count"
-            ;;
+function verify_write_events() {
+    echo -e "${CYAN}Verifying event sequence across chains...${NC}"
 
-        "op")
-            logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
-            event_count=$(echo "$logs" | grep -c "blockHash")
-            echo "Total CounterIncreasedTo events: $event_count"
-            ;;
+    # Fetch initial EVMx logs
+    local evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
 
-        "both")
-            # Collect logs for both Arbitrum and Optimism
-            local arb_logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
-            local op_logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
+    local evmx_values=()
+    while IFS= read -r line; do
+        if [[ "$line" =~ data:\ (0x[0-9a-fA-F]+) ]]; then
+            local value=$(cast to-dec "0x${BASH_REMATCH[1]:130:64}")
+            evmx_values+=("$value")
+        fi
+    done <<< "$evmx_logs"
 
-            local arb_event_count=$(echo "$arb_logs" | grep -c "blockHash")
-            local op_event_count=$(echo "$op_logs" | grep -c "blockHash")
+    # Fetch and parse Optimism logs
+    local op_logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
+    local op_values=()
+    while IFS= read -r line; do
+        if [[ "$line" =~ data:\ (0x[0-9a-fA-F]+) ]]; then
+            local value=$(cast to-dec "${BASH_REMATCH[1]}")
+            op_values+=("$value")
+        fi
+    done <<< "$op_logs"
 
-            event_count=$(( arb_event_count + op_event_count))
-            echo "Total CounterIncreasedTo events: $event_count"
-            ;;
+    # Verify first 10 values
+    for ((i=0; i<10; i++)); do
+        if [ "${evmx_values[i]}" != "${op_values[i]}" ]; then
+            echo -e "${RED}Mismatch sequential write events:${NC}"
+            echo "EVMx value: ${evmx_values[i]}"
+            echo "Optimism value: ${op_values[i]}"
+            exit 1
+        fi
+    done
 
-        *)
-            echo "Error: Invalid instance. Use 'arb', 'op', or 'both'."
-            return 1
-            ;;
-    esac
+    # Fetch and parse Arbitrum logs
+    local arb_logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
+    local arb_values=()
+    while IFS= read -r line; do
+        if [[ "$line" =~ data:\ (0x[0-9a-fA-F]+) ]]; then
+            local value=$(cast to-dec "${BASH_REMATCH[1]}")
+            arb_values+=("$value")
+        fi
+    done <<< "$arb_logs"
 
-    # Update the total events seen
-    TOTAL_EVENTS_SEEN="$event_count_evmx"
+    # Verify next 10 events (Arbitrum)
+    for ((i=10; i<20; i++)); do
+        if [ "${evmx_values[i]}" != "${arb_values[i-10]}" ]; then
+            echo -e "${YELLOW}Mismatch parallel write events:${NC} EVMx value: ${evmx_values[i]} Arbitrum value: ${arb_values[i-10]}"
+        fi
+    done
+
+    # Verify last 5 values on both Arbitrum and Optimism
+    local last_5_op=("${op_values[@]: -5}")
+    local last_5_arb=("${arb_values[@]: -5}")
+    local last_10_evmx=("${evmx_values[@]: -10}")
+
+    for ((i=0; i<5; i++)); do
+        if [ "${last_5_op[i]}" != "${last_5_arb[i]}" ]; then
+            echo -e "${RED}Mismatch in alternate write events between Optimism and Arbitrum:${NC}"
+            echo "Optimism value: ${last_5_op[i]}"
+            echo "Arbitrum value: ${last_5_arb[i]}"
+            exit 1
+        fi
+    done
+
+    for ((i=0, j=0; i<10; i+=2, j++)); do
+        if [[ "${last_10_evmx[i]}" != "${last_5_op[j]}" || "${last_10_evmx[i]}" != "${last_5_arb[j]}" ]]; then
+            echo -e "${RED}Mismatch in alternate write events with EVMx:${NC}"
+            echo "EVMx value: ${last_10_evmx[i]}"
+            echo "Optimism/Arbitrum value: ${last_5_op[j]}/${last_5_arb[j]}"
+            exit 1
+        fi
+    done
 }
 
 # Function to run all write tests
@@ -357,7 +392,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-    fetch_and_compare_logs 10 op
+    await_events 10
 
     # 2. Trigger Parallel Write
     echo -e "${CYAN}triggerParallelWrite...${NC}"
@@ -371,7 +406,7 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-    fetch_and_compare_logs 10 arb
+    await_events 20
 
     # 3. Trigger Alternating Write between chains
     echo -e "${CYAN}triggerAltWrite...${NC}"
@@ -385,7 +420,8 @@ run_write_tests() {
         return 1
     fi
     parse_txhash "$output"
-    fetch_and_compare_logs 10 both
+    await_events 30
+    verify_write_events
 }
 
 # Function to read timeouts from the contract
@@ -477,7 +513,7 @@ main() {
 
     deploy_appgateway write WriteAppGateway
     deposit_funds
-    progress_bar 5
+    progress_bar 3
     deploy_onchain $ARB_SEP_CHAIN_ID
     deploy_onchain $OP_SEP_CHAIN_ID
     progress_bar 10
