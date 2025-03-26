@@ -9,11 +9,12 @@ NC='\033[0m' # No Color
 progress_bar() {
     local duration=$1
     local width=50
-    local interval=$(echo "scale=2; $duration / $width" | bc)
+    local interval
+    interval=$(echo "scale=2; $duration / $width" | bc)
 
     for ((i=0; i<=width; i++)); do
-        printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" $(printf "#%.0s" $(seq 1 $i)) $((i*2))
-        sleep $interval
+        printf "\r${CYAN}Waiting $duration sec: [%-${width}s] %d%%${NC}" "$(printf "#%.0s" $(seq 1 $i)) $((i*2))"
+        sleep "$interval"
     done
     printf "\n"
 }
@@ -27,13 +28,13 @@ prepare_deployment() {
     fi
 
     # Check if .env exists and load it
-    if [ -f ".env" ]; then
-        echo -e "${CYAN}Loading environment variables from .env${NC}"
-        source .env
-    else
+    if [ ! -f ".env" ]; then
         echo -e "${RED}Error: .env file not found!${NC}"
         exit 1
     fi
+
+    echo -e "${CYAN}Loading environment variables from .env${NC}"
+    source .env
 
     # Constants
     export ARB_SEP_CHAIN_ID=421614
@@ -55,7 +56,8 @@ prepare_deployment() {
 deploy_appgateway() {
     local filename=$1
     echo -e "${CYAN}Deploying $filename contract${NC}"
-    local DEPLOY_OUTPUT=$(forge create src/schedule/$filename.sol:$filename \
+    local DEPLOY_OUTPUT
+    if ! DEPLOY_OUTPUT=$(forge create src/schedule/"$filename".sol:"$filename" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
         --legacy \
@@ -64,13 +66,17 @@ deploy_appgateway() {
         --verify \
         --verifier-url "$EVMX_VERIFIER_URL" \
         --verifier blockscout \
-        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)")
+        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)"); then
+        echo -e "${RED}Error: Contract deployment failed.${NC}"
+        exit 1
+    fi
 
     # Extract the deployed address
-    local APP_GATEWAY_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep "Deployed to:" | awk '{print $3}')
+    local APP_GATEWAY_ADDRESS
+    APP_GATEWAY_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep "Deployed to:" | awk '{print $3}')
 
     # Check if extraction was successful
-    if [ -z "$APP_GATEWAY" ]; then
+    if [ -z "$APP_GATEWAY_ADDRESS" ]; then
         echo -e "${RED}Error: Failed to extract deployed address.${NC}"
         exit 1
     fi
@@ -86,20 +92,18 @@ deposit_funds() {
     echo -e "${CYAN}Depositing funds${NC}"
 
     # Deposit funds
-    local DEPOSIT_OUTPUT=$(cast send "$ARBITRUM_FEES_PLUG" \
+    local DEPOSIT_OUTPUT
+    if ! DEPOSIT_OUTPUT=$(cast send "$ARBITRUM_FEES_PLUG" \
         --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
         --private-key "$PRIVATE_KEY" \
         --value "$FEES_AMOUNT" \
-        "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT")
-
-    if [ $? -ne 0 ]; then
+        "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT"); then
         echo -e "${RED}Error: Failed to deposit fees.${NC}"
         exit 1
     fi
 
     # Extract and return block hash
-    local DEPOSIT_BLOCK_HASH=$(echo "$DEPOSIT_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')
-    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$DEPOSIT_BLOCK_HASH"
+    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$(echo "$DEPOSIT_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')"
 }
 
 # Function to withdraw funds and return block hash
@@ -109,12 +113,17 @@ withdraw_funds() {
     echo -e "${CYAN}Withdrawing funds${NC}"
 
     # Get available fees from EVMX chain
-    local AVAILABLE_FEES_RAW=$(cast call "$FEES_MANAGER" \
+    local AVAILABLE_FEES_RAW
+    if ! AVAILABLE_FEES_RAW=$(cast call "$FEES_MANAGER" \
         "getAvailableFees(uint32,address,address)(uint256)" \
         "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
-        --rpc-url "$EVMX_RPC")
+        --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error: Failed to get available fees.${NC}"
+        exit 1
+    fi
 
-    local AVAILABLE_FEES=$(echo "$AVAILABLE_FEES_RAW" | awk '{print $1}')
+    local AVAILABLE_FEES
+    AVAILABLE_FEES=$(echo "$AVAILABLE_FEES_RAW" | awk '{print $1}')
 
     # Ensure it's a valid integer before proceeding
     if ! [[ "$AVAILABLE_FEES" =~ ^[0-9]+$ ]]; then
@@ -127,7 +136,8 @@ withdraw_funds() {
     # Check if there are funds to withdraw
     if [ "$AVAILABLE_FEES" -gt 0 ]; then
         # Fetch gas price on Arbitrum Sepolia
-        local ARBITRUM_GAS_PRICE=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
+        local ARBITRUM_GAS_PRICE
+        ARBITRUM_GAS_PRICE=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
 
         # Add buffer to gas price
         local GAS_PRICE=$((ARBITRUM_GAS_PRICE + GAS_BUFFER))
@@ -141,22 +151,20 @@ withdraw_funds() {
 
         if [ "$AMOUNT_TO_WITHDRAW" -gt 0 ]; then
             # Withdraw funds from the contract
-            local WITHDRAW_OUTPUT=$(cast send "$APP_GATEWAY" \
+            local WITHDRAW_OUTPUT
+            if ! WITHDRAW_OUTPUT=$(cast send "$APP_GATEWAY" \
                 --rpc-url "$EVMX_RPC" \
                 --private-key "$PRIVATE_KEY" \
                 --legacy \
                 --gas-price 0 \
                 "withdrawFeeTokens(uint32,address,uint256,address)" \
-                "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$AMOUNT_TO_WITHDRAW" "$SENDER_ADDRESS")
-
-            if [ $? -ne 0 ]; then
+                "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$AMOUNT_TO_WITHDRAW" "$SENDER_ADDRESS"); then
                 echo -e "${RED}Error: Failed to withdraw fees.${NC}"
                 exit 1
             fi
 
             # Extract and return block hash
-            local BLOCK_HASH=$(echo "$WITHDRAW_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')
-            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$BLOCK_HASH"
+            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$(echo "$WITHDRAW_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -175,11 +183,14 @@ read_timeouts() {
     export NUMBER_OF_TIMEOUTS=0
 
     while true; do
-        timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $NUMBER_OF_TIMEOUTS \
+        timeout=""
+        if ! timeout=$(cast call "$APP_GATEWAY" "timeoutsInSeconds(uint256)(uint256)" $NUMBER_OF_TIMEOUTS \
             --rpc-url "$EVMX_RPC" \
-            2>/dev/null)
+            2>/dev/null); then
+            break
+        fi
 
-        if [ $? -ne 0 ] || [ -z "$timeout" ]; then
+        if [ -z "$timeout" ]; then
             break
         fi
 
@@ -195,13 +206,11 @@ read_timeouts() {
 # Function to trigger timeouts
 trigger_timeouts() {
     echo -e "${CYAN}Triggering timeouts...${NC}"
-    local OUTPUT=$(cast send "$APP_GATEWAY" "triggerTimeouts()" \
+    if ! cast send "$APP_GATEWAY" "triggerTimeouts()" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
         --legacy \
-        --gas-price 0)
-
-    if [ $? -ne 0 ]; then
+        --gas-price 0; then
         echo -e "${RED}Error: Failed to trigger timeouts.${NC}"
         exit 1
     fi
@@ -248,8 +257,7 @@ show_timeout_events() {
 main() {
     prepare_deployment
     # Get sender address
-    SENDER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
-    if [ -z "$SENDER_ADDRESS" ]; then
+    if ! SENDER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY"); then
         echo -e "${RED}Error: Failed to derive sender address.${NC}"
         exit 1
     fi
