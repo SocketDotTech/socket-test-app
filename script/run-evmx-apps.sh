@@ -52,9 +52,10 @@ prepare_deployment() {
 }
 
 # Function to deploy contract and return block hash
-deploy_contract() {
-    echo -e "${CYAN}Deploying AppGateway contract${NC}"
-    local DEPLOY_OUTPUT=$(forge create src/schedule/ScheduleAppGateway.sol:ScheduleAppGateway \
+deploy_appgateway() {
+    local filename=$1
+    echo -e "${CYAN}Deploying $filename contract${NC}"
+    local DEPLOY_OUTPUT=$(forge create src/schedule/$filename.sol:$filename \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
         --legacy \
@@ -253,7 +254,7 @@ main() {
         exit 1
     fi
 
-    deploy_contract
+    deploy_appgateway ScheduleAppGateway
     read_timeouts
     trigger_timeouts
     echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
