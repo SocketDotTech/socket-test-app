@@ -124,21 +124,11 @@ deploy_onchain() {
         echo -e "${RED}Error: Failed to deploy contract on Arbitrum Sepolia.${NC}"
         exit 1
     fi
-
-    local txhash
-    txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
-    # Check if txhash is empty or invalid
-    if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
-        echo "Extracted value: '$txhash'"
-        exit 1
-    fi
-
-    echo "Deploy onchain Tx Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
+    parse_txhash "$output"
 }
 
 # Function to fetch forwarder address from chain id
-fetch_forwarder_address() {
+fetch_forwarder_and_onchain_address() {
     local contractname=$1
     local chainid=$2
     echo -e "${CYAN}Fetching forwarder address${NC}"
@@ -150,8 +140,8 @@ fetch_forwarder_address() {
         return 1
     fi
 
-    local output
-    if ! output=$(cast call "$APP_GATEWAY" \
+    local forwarder
+    if ! forwarder=$(cast call "$APP_GATEWAY" \
         "forwarderAddresses(bytes32,uint32)(address)" \
         "$contractid" "$chainid" \
         --rpc-url "$EVMX_RPC"); then
@@ -159,14 +149,23 @@ fetch_forwarder_address() {
         exit 1
     fi
 
-    # Output results
-    echo -e "${GREEN}Forwarder for chain $chainid: $output${NC}"
+    local onchain
+    if ! onchain=$(cast call "$APP_GATEWAY" \
+        "getOnChainAddress(bytes32,uint32)(address)" \
+        "$contractid" "$chainid" \
+        --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error: Failed to retrieve forwarder address for chain $chainid.${NC}"
+        exit 1
+    fi
 
-    # Export the appropriate forwarder based on chain ID
+    echo -e "${GREEN}Forwarder for chain $chainid: $forwarder${NC}"
+    echo -e "${GREEN}Onchain for chain $chainid: $onchain${NC}"
     if [ "$chainid" -eq "$ARB_SEP_CHAIN_ID" ]; then
-        export ARB_FORWARDER="$output"
+        export ARB_FORWARDER="$forwarder"
+        export ARB_ONCHAIN="$onchain"
     elif [ "$chainid" -eq "$OP_SEP_CHAIN_ID" ]; then
-        export OP_FORWARDER="$output"
+        export OP_FORWARDER="$forwarder"
+        export OP_ONCHAIN="$onchain"
     else
         echo -e "${RED}Warning: Unknown chain ID $chainid. Forwarder not exported.${NC}"
         exit 1
@@ -406,8 +405,8 @@ main() {
     deploy_onchain $ARB_SEP_CHAIN_ID
     deploy_onchain $OP_SEP_CHAIN_ID
     progress_bar 10
-    fetch_forwarder_address 'multichain' $ARB_SEP_CHAIN_ID
-    fetch_forwarder_address 'multichain' $OP_SEP_CHAIN_ID
+    fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
+    fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
     run_write_tests
     withdraw_funds
 
