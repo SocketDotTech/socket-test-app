@@ -54,10 +54,11 @@ prepare_deployment() {
 
 # Function to deploy contract and return block hash
 deploy_appgateway() {
-    local filename=$1
+    local filefolder=$1
+    local filename=$2
     echo -e "${CYAN}Deploying $filename contract${NC}"
     local DEPLOY_OUTPUT
-    if ! DEPLOY_OUTPUT=$(forge create src/schedule/"$filename".sol:"$filename" \
+    if ! DEPLOY_OUTPUT=$(forge create src/"$filefolder"/"$filename".sol:"$filename" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
         --legacy \
