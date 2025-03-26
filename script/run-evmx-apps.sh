@@ -133,45 +133,64 @@ deploy_onchain() {
 fetch_forwarder_and_onchain_address() {
     local contractname=$1
     local chainid=$2
-    echo -e "${CYAN}Fetching forwarder address${NC}"
+    echo -e "${CYAN}Fetching forwarder address for contract '$contractname' on chain ID $chainid${NC}"
 
+    # Retrieve contract ID
     local contractid
-    if ! contractid=$(cast call "$APP_GATEWAY" "$contractname()(bytes32)" \
-        --rpc-url "$EVMX_RPC"); then
+    if ! contractid=$(cast call "$APP_GATEWAY" "$contractname()(bytes32)" --rpc-url "$EVMX_RPC"); then
         echo -e "${RED}Error: Failed to retrieve $contractname identifier.${NC}"
         exit 1
     fi
 
+    # Retrieve forwarder address
     local forwarder
     if ! forwarder=$(cast call "$APP_GATEWAY" \
         "forwarderAddresses(bytes32,uint32)(address)" \
-        "$contractid" "$chainid" \
-        --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error: Failed to retrieve forwarder address for chain $chainid.${NC}"
+        "$contractid" "$chainid" --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error:${NC} Failed to retrieve forwarder address for chain $chainid."
         exit 1
     fi
 
+    # Check if the forwarder address is the zero address
+    if [ "$forwarder" == "0x0000000000000000000000000000000000000000" ]; then
+        echo -e "${RED}Error:${NC} Forwarder address is zero for chain $chainid."
+        exit 1
+    fi
+
+    # Retrieve onchain address
     local onchain
     if ! onchain=$(cast call "$APP_GATEWAY" \
         "getOnChainAddress(bytes32,uint32)(address)" \
-        "$contractid" "$chainid" \
-        --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error: Failed to retrieve forwarder address for chain $chainid.${NC}"
+        "$contractid" "$chainid" --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error:${NC} Failed to retrieve onchain address for chain $chainid."
         exit 1
     fi
 
-    echo "Forwarder for chain $chainid: $forwarder"
-    echo "Onchain for chain $chainid: $onchain"
-    if [ "$chainid" -eq "$ARB_SEP_CHAIN_ID" ]; then
-        export ARB_FORWARDER="$forwarder"
-        export ARB_ONCHAIN="$onchain"
-    elif [ "$chainid" -eq "$OP_SEP_CHAIN_ID" ]; then
-        export OP_FORWARDER="$forwarder"
-        export OP_ONCHAIN="$onchain"
-    else
-        echo -e "${RED}Warning: Unknown chain ID $chainid. Forwarder not exported.${NC}"
+    # Check if the onchain address is the zero address
+    if [ "$onchain" == "0x0000000000000000000000000000000000000000" ]; then
+        echo -e "${RED}Error:${NC} onchain address is zero for chain $chainid."
         exit 1
     fi
+
+    # Log the retrieved addresses
+    echo "Forwarder for chain $chainid: $forwarder"
+    echo "Onchain for chain $chainid: $onchain"
+
+    # Handle dynamic chain ID exports (improving flexibility)
+    case "$chainid" in
+        "$ARB_SEP_CHAIN_ID")
+            export ARB_FORWARDER="$forwarder"
+            export ARB_ONCHAIN="$onchain"
+            ;;
+        "$OP_SEP_CHAIN_ID")
+            export OP_FORWARDER="$forwarder"
+            export OP_ONCHAIN="$onchain"
+            ;;
+        *)
+            # Dynamically add more chain ID handling here if necessary
+            echo -e "${YELLOW}Warning:${NC} Unknown chain ID $chainid. Forwarder not exported."
+            ;;
+    esac
 }
 
 # Function to deposit funds
