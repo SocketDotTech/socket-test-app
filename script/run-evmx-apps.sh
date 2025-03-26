@@ -87,7 +87,7 @@ deploy_appgateway() {
     export APP_GATEWAY="$APP_GATEWAY_ADDRESS"
 }
 
-# Function to deposit funds and return block hash
+# Function to deposit funds
 deposit_funds() {
     local APP_GATEWAY="$1"
     echo -e "${CYAN}Depositing funds${NC}"
@@ -103,11 +103,21 @@ deposit_funds() {
         exit 1
     fi
 
-    # Extract and return block hash
-    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$(echo "$DEPOSIT_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')"
+    # Extract transactionHash (top-level, not from logs)
+    local TX_HASH
+    TX_HASH=$(echo "$DEPOSIT_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
+
+    # Check if TX_HASH is empty or invalid
+    if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}Error: Failed to extract valid transactionHash from deposit output.${NC}"
+        echo "Extracted value: '$TX_HASH'"
+        exit 1
+    fi
+
+    echo "Deposit Block Hash: https://arbitrum-sepolia.blockscout.com/tx/$TX_HASH"
 }
 
-# Function to withdraw funds and return block hash
+# Function to withdraw funds
 withdraw_funds() {
     local APP_GATEWAY="$1"
     local SENDER_ADDRESS="$2"
@@ -164,8 +174,18 @@ withdraw_funds() {
                 exit 1
             fi
 
-            # Extract and return block hash
-            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$(echo "$WITHDRAW_OUTPUT" | grep "blockHash" | head -n 1 | awk '{print $2}')"
+            # Extract transactionHash (top-level, not from logs)
+            local TX_HASH
+            TX_HASH=$(echo "$WITHDRAW_OUTPUT" | grep "^transactionHash" | awk '{print $2}')
+
+            # Check if TX_HASH is empty or invalid
+            if [ -z "$TX_HASH" ] || ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+                echo -e "${RED}Error: Failed to extract valid transactionHash from withdraw output.${NC}"
+                echo "Extracted value: '$TX_HASH'"
+                exit 1
+            fi
+
+            echo "Withdraw Block Hash: https://evmx.cloud.blockscout.com/tx/$TX_HASH"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
