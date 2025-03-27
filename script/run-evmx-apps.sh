@@ -31,13 +31,13 @@ progress_bar() {
 prepare_deployment() {
     echo -e "${CYAN}Building contracts${NC}"
     if ! forge build; then
-        echo -e "${RED}Error: forge build failed. Check your contract code.${NC}"
+        echo -e "${RED}Error:${NC} forge build failed. Check your contract code."
         exit 1
     fi
 
     # Check if .env exists and load it
     if [ ! -f ".env" ]; then
-        echo -e "${RED}Error: .env file not found!${NC}"
+        echo -e "${RED}Error:${NC} .env file not found!"
         exit 1
     fi
 
@@ -56,7 +56,7 @@ prepare_deployment() {
 
     # Ensure required variables are set
     if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ]; then
-        echo -e "${RED}Error: EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set.${NC}"
+        echo -e "${RED}Error:${NC} EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set."
         exit 1
     fi
 }
@@ -77,7 +77,7 @@ deploy_appgateway() {
         --verifier-url "$EVMX_VERIFIER_URL" \
         --verifier blockscout \
         --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)"); then
-        echo -e "${RED}Error: Contract deployment failed.${NC}"
+        echo -e "${RED}Error:${NC} Contract deployment failed."
         exit 1
     fi
 
@@ -87,7 +87,7 @@ deploy_appgateway() {
 
     # Check if extraction was successful
     if [ -z "$appgateway" ]; then
-        echo -e "${RED}Error: Failed to extract deployed address.${NC}"
+        echo -e "${RED}Error:${NC} Failed to extract deployed address."
         exit 1
     fi
 
@@ -102,7 +102,7 @@ function parse_txhash() {
     txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
     # Check if txhash is empty or invalid
     if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error: Failed to extract valid transactionHash from output.${NC}"
+        echo -e "${RED}Error:${NC} Failed to extract valid transactionHash from output."
         echo "Extracted value: '$txhash'"
         exit 1
     fi
@@ -123,7 +123,7 @@ deploy_onchain() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error: Failed to deploy contract on Arbitrum Sepolia.${NC}"
+        echo -e "${RED}Error:${NC} Failed to deploy contract on Arbitrum Sepolia."
         exit 1
     fi
     parse_txhash "$output"
@@ -172,7 +172,7 @@ fetch_forwarder_and_onchain_address() {
     # Retrieve contract ID
     local contractid
     if ! contractid=$(cast call "$APP_GATEWAY" "$contractname()(bytes32)" --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error: Failed to retrieve $contractname identifier.${NC}"
+        echo -e "${RED}Error:${NC} Failed to retrieve $contractname identifier."
         exit 1
     fi
 
@@ -238,7 +238,7 @@ deposit_funds() {
         --private-key "$PRIVATE_KEY" \
         --value "$FEES_AMOUNT" \
         "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT"); then
-        echo -e "${RED}Error: Failed to deposit fees.${NC}"
+        echo -e "${RED}Error:${NC} Failed to deposit fees."
         exit 1
     fi
 
@@ -246,7 +246,7 @@ deposit_funds() {
     txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
     # Check if txhash is empty or invalid
     if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error: Failed to extract valid transactionHash from deposit output.${NC}"
+        echo -e "${RED}Error:${NC} Failed to extract valid transactionHash from deposit output."
         echo "Extracted value: '$txhash'"
         exit 1
     fi
@@ -264,7 +264,7 @@ withdraw_funds() {
         "getAvailableFees(uint32,address,address)(uint256)" \
         "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
         --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error: Failed to get available fees.${NC}"
+        echo -e "${RED}Error:${NC} Failed to get available fees."
         exit 1
     fi
 
@@ -273,7 +273,7 @@ withdraw_funds() {
 
     # Ensure it's a valid integer before proceeding
     if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
-        echo -e "${RED}Error: Invalid available fees value: $available_fees${NC}"
+        echo -e "${RED}Error:${NC} Invalid available fees value: $available_fees"
         exit 1
     fi
 
@@ -305,7 +305,7 @@ withdraw_funds() {
                 --gas-price 0 \
                 "withdrawFeeTokens(uint32,address,uint256,address)" \
                 "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$amount_to_withdraw" "$SENDER_ADDRESS"); then
-                echo -e "${RED}Error: Failed to withdraw fees.${NC}"
+                echo -e "${RED}Error:${NC} Failed to withdraw fees."
                 exit 1
             fi
 
@@ -445,7 +445,7 @@ run_write_tests() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error: Failed to trigger sequential write${NC}"
+        echo -e "${RED}Error:${NC} Failed to trigger sequential write"
         return 1
     fi
     parse_txhash "$output"
@@ -459,7 +459,7 @@ run_write_tests() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error: Failed to trigger parallel write${NC}"
+        echo -e "${RED}Error:${NC} Failed to trigger parallel write"
         return 1
     fi
     parse_txhash "$output"
@@ -473,7 +473,7 @@ run_write_tests() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error: Failed to trigger alternating write${NC}"
+        echo -e "${RED}Error:${NC} Failed to trigger alternating write"
         return 1
     fi
     parse_txhash "$output"
@@ -495,7 +495,7 @@ run_read_tests() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error: Failed to trigger parallel read${NC}"
+        echo -e "${RED}Error:${NC} Failed to trigger parallel read"
         return 1
     fi
     parse_txhash "$output"
@@ -509,7 +509,7 @@ run_read_tests() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error: Failed to trigger alternating read${NC}"
+        echo -e "${RED}Error:${NC} Failed to trigger alternating read"
         return 1
     fi
     parse_txhash "$output"
@@ -555,7 +555,7 @@ trigger_timeouts() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0; then
-        echo -e "${RED}Error: Failed to trigger timeouts.${NC}"
+        echo -e "${RED}Error:${NC} Failed to trigger timeouts."
         exit 1
     fi
 }
@@ -573,7 +573,7 @@ show_timeout_events() {
     echo -e "${GREEN}Total TimeoutResolved events: $event_count${NC}"
 
     if [ "$event_count" -ne "$NUMBER_OF_TIMEOUTS" ]; then
-        echo -e "${RED}Warning:${NC} Expected $NUMBER_OF_TIMEOUTS timeouts but found $event_count."
+        echo -e "${YELLOW}Warning:${NC} Expected $NUMBER_OF_TIMEOUTS timeouts but found $event_count."
     fi
 
     # Decode and display event data
