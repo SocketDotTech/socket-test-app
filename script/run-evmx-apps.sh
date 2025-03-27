@@ -129,6 +129,40 @@ deploy_onchain() {
     parse_txhash "$output"
 }
 
+# Function to verify onchain contracts
+verify_onchain_contract() {
+    local chain_id="$1"
+    local address="$2"
+    local path="$3"
+    local name="$4"
+
+    # Check if required parameters are provided
+    if [ -z "$chain_id" ] || [ -z "$address" ] || [ -z "$path" ] || [ -z "$name" ]; then
+        echo "Usage: verify_contract <chain_id> <address> <path> <name>"
+        return 1
+    }
+
+    if [ "$chain_id" = "$ARB_SEP_CHAIN_ID" ]; then
+        forge verify-contract \
+            --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
+            --verifier-url "https://arbitrum-sepolia.blockscout.com/api" \
+            --verifier blockscout \
+            "$address" \
+            "src/$path/$name.sol:$name"
+    elif [ "$chain_id" = "$OP_SEP_CHAIN_ID" ]; then
+        forge verify-contract \
+            --rpc-url "$OPTIMISM_SEPOLIA_RPC" \
+            --verifier-url "https://optimism-sepolia.blockscout.com/api" \
+            --verifier blockscout \
+            "$address" \
+            "src/$path/$name.sol:$name"
+    else
+        echo "Unsupported chain ID: $chain_id"
+        echo "Supported chains: Arbitrum Sepolia ($ARB_SEP_CHAIN_ID), Optimism Sepolia ($OP_SEP_CHAIN_ID)"
+        return 1
+    fi
+}
+
 # Function to fetch forwarder address from chain id
 fetch_forwarder_and_onchain_address() {
     local contractname=$1
@@ -320,6 +354,10 @@ await_events() {
 
 }
 
+####################################################
+################### WRITE TESTS ####################
+####################################################
+# Function to validate correct events on EVMx and onchain
 function verify_write_events() {
     echo -e "${CYAN}Verifying event sequence across chains...${NC}"
 
@@ -443,6 +481,9 @@ run_write_tests() {
     verify_write_events
 }
 
+###################################################
+################## READ TESTS #####################
+###################################################
 # Function to run all read tests
 run_read_tests() {
     echo -e "${CYAN}Running all read tests functions...${NC}"
@@ -475,6 +516,9 @@ run_read_tests() {
     await_events 20 "ValueRead(address,uint256,uint256)"
 }
 
+###################################################
+################ SCHEDULER TESTS ##################
+###################################################
 # Function to read timeouts from the contract
 read_timeouts() {
     echo -e "${CYAN}Reading timeouts from the contract:${NC}"
@@ -571,7 +615,9 @@ main() {
         deploy_onchain $OP_SEP_CHAIN_ID
         progress_bar 10
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
+        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" write WriteAppGateway
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
+        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" write WriteAppGateway
         run_write_tests
         withdraw_funds
 
@@ -583,7 +629,9 @@ main() {
         deploy_onchain $OP_SEP_CHAIN_ID
         progress_bar 10
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
+        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" read ReadAppGateway
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
+        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" read ReadAppGateway
         run_read_tests
         withdraw_funds
 
