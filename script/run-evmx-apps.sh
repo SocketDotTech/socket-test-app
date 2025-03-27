@@ -84,7 +84,6 @@ deploy_appgateway() {
     # Extract the deployed address
     local appgateway
     appgateway=$(echo "$output" | grep "Deployed to:" | awk '{print $3}')
-
     # Check if extraction was successful
     if [ -z "$appgateway" ]; then
         echo -e "${RED}Error:${NC} Failed to extract deployed address."
@@ -325,7 +324,6 @@ await_events() {
 
     printf "\r${CYAN}Waiting logs for %d new events (up to %d seconds)...${NC}" "$expected_new_events" "$timeout"
 
-    local logs_evmx
     local event_count_evmx=0
 
     while [ "$elapsed" -lt "$timeout" ]; do
@@ -359,22 +357,22 @@ function verify_write_events() {
     echo -e "${CYAN}Verifying event sequence across chains...${NC}"
 
     # Fetch initial EVMx logs
-    local evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
+    evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "CounterIncreased(address,uint256,uint256)")
 
     local evmx_values=()
     while IFS= read -r line; do
         if [[ "$line" =~ data:\ (0x[0-9a-fA-F]+) ]]; then
-            local value=$(cast to-dec "0x${BASH_REMATCH[1]:130:64}")
+            value=$(cast to-dec "0x${BASH_REMATCH[1]:130:64}")
             evmx_values+=("$value")
         fi
     done <<< "$evmx_logs"
 
     # Fetch and parse Optimism logs
-    local op_logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
+    op_logs=$(cast logs --rpc-url "$OPTIMISM_SEPOLIA_RPC" --address "$OP_ONCHAIN" "CounterIncreasedTo(uint256)")
     local op_values=()
     while IFS= read -r line; do
         if [[ "$line" =~ data:\ (0x[0-9a-fA-F]+) ]]; then
-            local value=$(cast to-dec "${BASH_REMATCH[1]}")
+            value=$(cast to-dec "${BASH_REMATCH[1]}")
             op_values+=("$value")
         fi
     done <<< "$op_logs"
@@ -390,11 +388,11 @@ function verify_write_events() {
     done
 
     # Fetch and parse Arbitrum logs
-    local arb_logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
+    arb_logs=$(cast logs --rpc-url "$ARBITRUM_SEPOLIA_RPC" --address "$ARB_ONCHAIN" "CounterIncreasedTo(uint256)")
     local arb_values=()
     while IFS= read -r line; do
         if [[ "$line" =~ data:\ (0x[0-9a-fA-F]+) ]]; then
-            local value=$(cast to-dec "${BASH_REMATCH[1]}")
+            value=$(cast to-dec "${BASH_REMATCH[1]}")
             arb_values+=("$value")
         fi
     done <<< "$arb_logs"
