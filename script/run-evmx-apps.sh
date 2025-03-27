@@ -152,7 +152,7 @@ verify_onchain_contract() {
                 --verifier blockscout \
                 "$address" \
                 "src/$path/$name.sol:$name"); then
-            echo -e "${YELLOW}Warning:${NC} Failed to deploy contract on Arbitrum Sepolia."
+            echo -e "${YELLOW}Warning:${NC} Failed to verify contract on Arbitrum Sepolia."
         fi
     elif [ "$chain_id" = "$OP_SEP_CHAIN_ID" ]; then
         local output
@@ -162,7 +162,7 @@ verify_onchain_contract() {
                 --verifier blockscout \
                 "$address" \
                 "src/$path/$name.sol:$name"); then
-            echo -e "${YELLOW}Warning:${NC} Failed to deploy contract on Optimism Sepolia."
+            echo -e "${YELLOW}Warning:${NC} Failed to verify contract on Optimism Sepolia."
         fi
     else
         echo -e "${YELLOW}Unsupported chain ID:${NC} $chain_id"
@@ -512,6 +512,87 @@ run_read_tests() {
 }
 
 ###################################################
+######## TRIGGER APPGATEWAY ONCHAIN TESTS #########
+###################################################
+# Function to run all tests to trigger the AppGateway from onchain contracts
+run_trigger_appgateway_onchain_tests() {
+    echo -e "${CYAN}Running all trigger the AppGateway from onchain tests functions...${NC}"
+
+    local value_increase=5
+    echo -e "${CYAN}Increase on AppGateway from Arbitrum Sepolia${NC}"
+    if ! output=$(cast send "$ARB_ONCHAIN" \
+        "increaseOnGateway(uint256)" "$value_increase" \
+        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
+        --private-key "$PRIVATE_KEY"); then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        return 1
+    fi
+    parse_txhash "$output" "arbitrum-sepolia"
+    progress_bar 5
+    if ! value_evmx=$(cast call "$APP_GATEWAY" \
+        "valueOnGateway()" \
+        --rpc-url "$EVMX_RPC"); then
+        echo -e "${RED}Error:${NC} Failed to read valueOnGateway()"
+        return 1
+    fi
+
+    # Convert hex to decimal for comparison
+    value_evmx_dec=$(printf "%d" "$value_evmx")
+    if [[ $value_evmx_dec -lt $value_increase ]]; then
+        echo -e "${RED}Error:${NC} Got $value_evmx_dec but expected at least $value_increase"
+        exit 1
+    fi
+
+    echo -e "${CYAN}Update on Optimism Sepolia from AppGateway${NC}"
+    if ! output=$(cast send "$APP_GATEWAY" \
+        "updateOnchain(uint32)" "$OP_SEP_CHAIN_ID" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        return 1
+    fi
+    parse_txhash "$output" "evmx.cloud"
+    progress_bar 5
+    if ! value_op=$(cast call "$OP_ONCHAIN" \
+        "value()" \
+        --rpc-url "$OPTIMISM_SEPOLIA_RPC"); then
+        echo -e "${RED}Error:${NC} Failed to read value()"
+        return 1
+    fi
+
+    value_op_dec=$(printf "%d" "$value_op")
+    if [[ $value_evmx_dec -ne $value_op_dec ]]; then
+        echo -e "${RED}Error:${NC} Got $value_op_dec but expected $value_evmx_dec"
+        exit 1
+    fi
+
+    echo -e "${CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${NC}"
+    if ! output=$(cast send "$OP_ONCHAIN" \
+        "propagateToAnother(uint32)" "$ARB_SEP_CHAIN_ID" \
+        --rpc-url "$OPTIMISM_SEPOLIA_RPC" \
+        --private-key "$PRIVATE_KEY"); then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        return 1
+    fi
+    parse_txhash "$output" "optimism-sepolia"
+    progress_bar 5
+    if ! value_arb=$(cast call "$ARB_ONCHAIN" \
+        "value()" \
+        --rpc-url "$ARBITRUM_SEPOLIA_RPC"); then
+        echo -e "${RED}Error:${NC} Failed to read value()"
+        return 1
+    fi
+
+    value_arb_dec=$(printf "%d" "$value_arb")
+    if [[ $value_arb_dec -ne $value_op_dec ]]; then
+        echo -e "${RED}Error:${NC} Got $value_arb_dec but expected $value_op_dec"
+        exit 1
+    fi
+}
+
+###################################################
 ################ SCHEDULER TESTS ##################
 ###################################################
 # Function to read timeouts from the contract
@@ -628,6 +709,20 @@ main() {
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" read ReadMultichain
         run_read_tests
+        withdraw_funds
+
+        ##### TRIGGER APPGATEWAY FROM ONCHAIN TESTS #####
+        deploy_appgateway trigger-appgateway-onchain OnchainTriggerAppGateway
+        deposit_funds
+        progress_bar 3
+        deploy_onchain $ARB_SEP_CHAIN_ID
+        deploy_onchain $OP_SEP_CHAIN_ID
+        progress_bar 10
+        fetch_forwarder_and_onchain_address 'onchainToEVMx' $ARB_SEP_CHAIN_ID
+        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" trigger-appgateway-onchain OnchainTrigger
+        fetch_forwarder_and_onchain_address 'onchainToEVMx' $OP_SEP_CHAIN_ID
+        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" trigger-appgateway-onchain OnchainTrigger
+        run_trigger_appgateway_onchain_tests
         withdraw_funds
 
         ##### SCHEDULER TESTS #####
