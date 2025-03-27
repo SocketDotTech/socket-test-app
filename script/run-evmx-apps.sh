@@ -140,7 +140,7 @@ verify_onchain_contract() {
     if [ -z "$chain_id" ] || [ -z "$address" ] || [ -z "$path" ] || [ -z "$name" ]; then
         echo "Usage: verify_contract <chain_id> <address> <path> <name>"
         return 1
-    }
+    fi
 
     if [ "$chain_id" = "$ARB_SEP_CHAIN_ID" ]; then
         forge verify-contract \
