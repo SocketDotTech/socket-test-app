@@ -142,24 +142,30 @@ verify_onchain_contract() {
         return 1
     fi
 
+    echo -e "${CYAN}Verifying onchain contract $2 on chain id: $1${NC}"
     if [ "$chain_id" = "$ARB_SEP_CHAIN_ID" ]; then
-        forge verify-contract \
-            --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
-            --verifier-url "https://arbitrum-sepolia.blockscout.com/api" \
-            --verifier blockscout \
-            "$address" \
-            "src/$path/$name.sol:$name"
+        local output
+        if ! output=$(forge verify-contract \
+                --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
+                --verifier-url "https://arbitrum-sepolia.blockscout.com/api" \
+                --verifier blockscout \
+                "$address" \
+                "src/$path/$name.sol:$name"); then
+            echo -e "${YELLOW}Warning:${NC} Failed to deploy contract on Arbitrum Sepolia."
+        fi
     elif [ "$chain_id" = "$OP_SEP_CHAIN_ID" ]; then
-        forge verify-contract \
-            --rpc-url "$OPTIMISM_SEPOLIA_RPC" \
-            --verifier-url "https://optimism-sepolia.blockscout.com/api" \
-            --verifier blockscout \
-            "$address" \
-            "src/$path/$name.sol:$name"
+        local output
+        if ! output=$(forge verify-contract \
+                --rpc-url "$OPTIMISM_SEPOLIA_RPC" \
+                --verifier-url "https://optimism-sepolia.blockscout.com/api" \
+                --verifier blockscout \
+                "$address" \
+                "src/$path/$name.sol:$name"
+                "src/$path/$name.sol:$name"); then
+            echo -e "${YELLOW}Warning:${NC} Failed to deploy contract on Arbitrum Sepolia."
+        fi
     else
-        echo "Unsupported chain ID: $chain_id"
-        echo "Supported chains: Arbitrum Sepolia ($ARB_SEP_CHAIN_ID), Optimism Sepolia ($OP_SEP_CHAIN_ID)"
-        return 1
+        echo -e "${YELLOW}Unsupported chain ID:${NC} $chain_id"
     fi
 }
 
