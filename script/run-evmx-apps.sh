@@ -323,30 +323,32 @@ await_events() {
     local interval=2              # Check every 2 seconds
     local elapsed=0               # Time elapsed
 
-    echo -e "${CYAN}Waiting logs for $expected_new_events new events (waiting up to $timeout seconds)...${NC}"
+    printf "\r${CYAN}Waiting logs for %d new events (up to %d seconds)...${NC}" "$expected_new_events" "$timeout"
 
     local logs_evmx
-    local event_count_evmx
+    local event_count_evmx=0
 
     while [ "$elapsed" -lt "$timeout" ]; do
         evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "$event")
         event_count_evmx=$(echo "$evmx_logs" | grep -c "blockHash")
 
-        if [ -n "$event_count_evmx" ] && [ "$event_count_evmx" -ge "$expected_new_events" ]; then
-            echo "Total CounterIncreased events on EVMx: $event_count_evmx (reached expected $expected_new_events)"
+        if [ "$event_count_evmx" -ge "$expected_new_events" ]; then
+            printf "\rTotal CounterIncreased events on EVMx: %d (reached expected %d)${NC}\n" "$event_count_evmx" "$expected_new_events"
             break
         fi
 
-        echo "Waiting for $expected_new_events logs on EVMx... Current count: $event_count_evmx (Elapsed: $elapsed/$timeout sec)"
+        # Update on same line
+        printf "\rWaiting for %d logs on EVMx: %d/%d (Elapsed: %d/%d sec)" \
+               "$expected_new_events" "$event_count_evmx" "$expected_new_events" "$elapsed" "$timeout"
         sleep "$interval"
         elapsed=$((elapsed + interval))
     done
 
     if [ "$event_count_evmx" -lt "$expected_new_events" ]; then
-        echo -e "${RED}Error:${NC} Timed out after $timeout seconds. Expected $expected_new_events CounterIncreased logs on EVMx, but found $event_count_evmx."
+        printf "\n${RED}Error:${NC} Timed out after %d seconds. Expected %d logs, found %d.\n" \
+               "$timeout" "$expected_new_events" "$event_count_evmx"
         exit 1
     fi
-
 }
 
 ####################################################
@@ -573,7 +575,7 @@ run_trigger_appgateway_onchain_tests() {
         "propagateToAnother(uint32)" "$ARB_SEP_CHAIN_ID" \
         --rpc-url "$OPTIMISM_SEPOLIA_RPC" \
         --private-key "$PRIVATE_KEY"); then
-        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        echo -e "${RED}Error:${NC} Failed to send tx on Optimism Sepolia"
         return 1
     fi
     parse_txhash "$output" "optimism-sepolia"
@@ -626,14 +628,16 @@ read_timeouts() {
 # Function to trigger timeouts
 trigger_timeouts() {
     echo -e "${CYAN}Triggering timeouts...${NC}"
-    if ! cast send "$APP_GATEWAY" "triggerTimeouts()" \
+    if ! output=$(cast send "$APP_GATEWAY" \
+        "triggerTimeouts()" \
         --rpc-url "$EVMX_RPC" \
         --private-key "$PRIVATE_KEY" \
         --legacy \
-        --gas-price 0; then
-        echo -e "${RED}Error:${NC} Failed to trigger timeouts."
-        exit 1
+        --gas-price 0); then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        return 1
     fi
+    parse_txhash "$output" "evmx.cloud"
 }
 
 # Function to listen for TimeoutResolved events
