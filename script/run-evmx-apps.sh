@@ -593,6 +593,72 @@ run_trigger_appgateway_onchain_tests() {
 }
 
 ###################################################
+############## UPLOAD TO EVMx TESTS ###############
+###################################################
+# Function to run upload to EVMx tests
+run_upload_tests() {
+    local filefolder=$1
+    local filename=$2
+    echo -e "${CYAN}Deploying $filename contract${NC}"
+    local output
+    if ! output=$(forge create src/"$filefolder"/"$filename".sol:"$filename" \
+        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --broadcast); then
+        echo -e "${RED}Error:${NC} Contract deployment failed."
+        exit 1
+    fi
+
+    # Extract the deployed address
+    local counter
+    counter=$(echo "$output" | grep "Deployed to:" | awk '{print $3}')
+    # Check if extraction was successful
+    if [ -z "$counter" ]; then
+        echo -e "${RED}Error:${NC} Failed to extract deployed address."
+        exit 1
+    else
+        echo "Counter: https://arbitrum-sepolia.blockscout.com/address/$counter"
+    fi
+
+    verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$counter" "$filefolder" "$filename"
+    echo -e "${CYAN}Increment counter on Arbitrum Sepolia${NC}"
+    if ! output=$(cast send "$counter" \
+        "increment()" \
+        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
+        --private-key "$PRIVATE_KEY"); then
+        echo -e "${RED}Error:${NC} Failed to send tx on Arbitrum Sepolia"
+        exit 1
+    fi
+
+    parse_txhash "$output" "arbitrum-sepolia"
+    echo -e "${CYAN}Upload counter to EVMx${NC}"
+    if ! output=$(cast send "$APP_GATEWAY" \
+        "uploadToEVMx(address,uint32)" "$counter" "$OP_SEP_CHAIN_ID" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        return 1
+    fi
+
+    parse_txhash "$output" "evmx.cloud"
+    echo -e "${CYAN}Test read from Counter forwarder address${NC}"
+    if ! output=$(cast send "$APP_GATEWAY" \
+        "read()" \
+        --rpc-url "$EVMX_RPC" \
+        --private-key "$PRIVATE_KEY" \
+        --legacy \
+        --gas-price 0); then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        return 1
+    fi
+
+    parse_txhash "$output" "evmx.cloud"
+    await_events 1 "ReadOnchain(address,uint256)"
+}
+
+###################################################
 ################ SCHEDULER TESTS ##################
 ###################################################
 # Function to read timeouts from the contract
@@ -725,6 +791,12 @@ main() {
         fetch_forwarder_and_onchain_address 'onchainToEVMx' $OP_SEP_CHAIN_ID
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" trigger-appgateway-onchain OnchainTrigger
         run_trigger_appgateway_onchain_tests
+        withdraw_funds
+
+        ##### UPLOAD TO EVMx TESTS #####
+        deploy_appgateway forwarder-on-evmx UploadAppGateway
+        deposit_funds
+        run_upload_tests forwarder-on-evmx Counter
         withdraw_funds
 
         ##### SCHEDULER TESTS #####
