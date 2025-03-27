@@ -608,7 +608,7 @@ main() {
     prepare_deployment
     # Get sender address
     if ! SENDER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY"); then
-        echo -e "${RED}Error: Failed to derive sender address.${NC}"
+        echo -e "${RED}Error:${NC} Failed to derive sender address."
         exit 1
     fi
 
@@ -621,9 +621,9 @@ main() {
         deploy_onchain $OP_SEP_CHAIN_ID
         progress_bar 10
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
-        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" write WriteAppGateway
+        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" write WriteMultichain
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
-        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" write WriteAppGateway
+        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" write WriteMultichain
         run_write_tests
         withdraw_funds
 
@@ -635,9 +635,9 @@ main() {
         deploy_onchain $OP_SEP_CHAIN_ID
         progress_bar 10
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
-        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" read ReadAppGateway
+        verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" read ReadMultichain
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
-        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" read ReadAppGateway
+        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" read ReadMultichain
         run_read_tests
         withdraw_funds
 
