@@ -98,6 +98,7 @@ deploy_appgateway() {
 # Helper function to parse and print the txhash
 function parse_txhash() {
     local output=$1
+    local path=$2
     local txhash
     txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
     # Check if txhash is empty or invalid
@@ -107,7 +108,7 @@ function parse_txhash() {
         exit 1
     fi
 
-    echo "Tx Hash: https://evmx.cloud.blockscout.com/tx/$txhash"
+    echo "Tx Hash: https://$path.blockscout.com/tx/$txhash"
 }
 
 # Function to deploy onchain contracts from chain id
@@ -123,10 +124,10 @@ deploy_onchain() {
         --private-key "$PRIVATE_KEY" \
         --legacy \
         --gas-price 0); then
-        echo -e "${RED}Error:${NC} Failed to deploy contract on Arbitrum Sepolia."
+        echo -e "${RED}Error:${NC} Failed to deploy contract on chain id $chainid"
         exit 1
     fi
-    parse_txhash "$output"
+    parse_txhash "$output" "evmx.cloud"
 }
 
 # Function to verify onchain contracts
@@ -160,9 +161,8 @@ verify_onchain_contract() {
                 --verifier-url "https://optimism-sepolia.blockscout.com/api" \
                 --verifier blockscout \
                 "$address" \
-                "src/$path/$name.sol:$name"
                 "src/$path/$name.sol:$name"); then
-            echo -e "${YELLOW}Warning:${NC} Failed to deploy contract on Arbitrum Sepolia."
+            echo -e "${YELLOW}Warning:${NC} Failed to deploy contract on Optimism Sepolia."
         fi
     else
         echo -e "${YELLOW}Unsupported chain ID:${NC} $chain_id"
@@ -247,17 +247,7 @@ deposit_funds() {
         echo -e "${RED}Error:${NC} Failed to deposit fees."
         exit 1
     fi
-
-    local txhash
-    txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
-    # Check if txhash is empty or invalid
-    if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        echo -e "${RED}Error:${NC} Failed to extract valid transactionHash from deposit output."
-        echo "Extracted value: '$txhash'"
-        exit 1
-    fi
-
-    echo "Deposit Tx Hash: https://arbitrum-sepolia.blockscout.com/tx/$txhash"
+    parse_txhash "$output" "arbitrum-sepolia"
 }
 
 # Function to withdraw funds
@@ -314,8 +304,7 @@ withdraw_funds() {
                 echo -e "${RED}Error:${NC} Failed to withdraw fees."
                 exit 1
             fi
-
-            parse_txhash "$output"
+            parse_txhash "$output" "evmx.cloud"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -454,7 +443,7 @@ run_write_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger sequential write"
         return 1
     fi
-    parse_txhash "$output"
+    parse_txhash "$output" "evmx.cloud"
     await_events 10 "CounterIncreased(address,uint256,uint256)"
 
     # 2. Trigger Parallel Write
@@ -468,7 +457,7 @@ run_write_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger parallel write"
         return 1
     fi
-    parse_txhash "$output"
+    parse_txhash "$output" "evmx.cloud"
     await_events 20 "CounterIncreased(address,uint256,uint256)"
 
     # 3. Trigger Alternating Write between chains
@@ -482,7 +471,7 @@ run_write_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger alternating write"
         return 1
     fi
-    parse_txhash "$output"
+    parse_txhash "$output" "evmx.cloud"
     await_events 30 "CounterIncreased(address,uint256,uint256)"
     verify_write_events
 }
@@ -504,7 +493,7 @@ run_read_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger parallel read"
         return 1
     fi
-    parse_txhash "$output"
+    parse_txhash "$output" "evmx.cloud"
     await_events 10
 
     # 2. Trigger Alternating Write between chains
@@ -518,7 +507,7 @@ run_read_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger alternating read"
         return 1
     fi
-    parse_txhash "$output"
+    parse_txhash "$output" "evmx.cloud"
     await_events 20 "ValueRead(address,uint256,uint256)"
 }
 
