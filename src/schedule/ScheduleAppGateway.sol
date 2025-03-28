@@ -59,7 +59,7 @@ contract ScheduleAppGateway is AppGatewayBase {
     function triggerTimeouts() public {
         for (uint256 i = 0; i < timeoutsInSeconds.length; i++) {
             bytes memory payload = abi.encodeWithSelector(this.resolveTimeout.selector, i, block.timestamp);
-            watcherPrecompile__().setTimeout(address(this), payload, timeoutsInSeconds[i]);
+            watcherPrecompile__().setTimeout(timeoutsInSeconds[i], payload);
         }
     }
 
