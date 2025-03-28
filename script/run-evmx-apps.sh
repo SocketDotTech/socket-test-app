@@ -639,7 +639,7 @@ run_upload_tests() {
         --legacy \
         --gas-price 0); then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
-        return 1
+        exit 1
     fi
 
     parse_txhash "$output" "evmx.cloud"
@@ -651,7 +651,7 @@ run_upload_tests() {
         --legacy \
         --gas-price 0); then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
-        return 1
+        exit 1
     fi
 
     parse_txhash "$output" "evmx.cloud"
