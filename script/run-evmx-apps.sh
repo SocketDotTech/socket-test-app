@@ -741,7 +741,20 @@ show_timeout_events() {
     done
 }
 
-# Main execution
+# Help function to display usage
+show_help() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  -w    Run write tests"
+    echo "  -r    Run read tests"
+    echo "  -t    Run trigger tests"
+    echo "  -u    Run upload tests"
+    echo "  -s    Run scheduler tests"
+    echo "  -a    Run all tests"
+    echo "  -?    Show this help message"
+    echo "If no options are provided, this help message is displayed."
+}
+
 main() {
     prepare_deployment
     # Get sender address
@@ -750,8 +763,8 @@ main() {
         exit 1
     fi
 
-    if true; then
-        ##### WRITE TESTS #####
+    # Write Tests function
+    run_write_tests_func() {
         deploy_appgateway write WriteAppGateway
         deposit_funds
         progress_bar 3
@@ -764,8 +777,10 @@ main() {
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" write WriteMultichain
         run_write_tests
         withdraw_funds
+    }
 
-        ##### READ TESTS #####
+    # Read Tests function
+    run_read_tests_func() {
         deploy_appgateway read ReadAppGateway
         deposit_funds
         progress_bar 3
@@ -778,8 +793,10 @@ main() {
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" read ReadMultichain
         run_read_tests
         withdraw_funds
+    }
 
-        ##### TRIGGER APPGATEWAY FROM ONCHAIN TESTS #####
+    # Trigger AppGateway from Onchain Tests function
+    run_trigger_tests_func() {
         deploy_appgateway trigger-appgateway-onchain OnchainTriggerAppGateway
         deposit_funds
         progress_bar 3
@@ -792,22 +809,78 @@ main() {
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" trigger-appgateway-onchain OnchainTrigger
         run_trigger_appgateway_onchain_tests
         withdraw_funds
+    }
 
-        ##### UPLOAD TO EVMx TESTS #####
+    # Upload to EVMx Tests function
+    run_upload_tests_func() {
         deploy_appgateway forwarder-on-evmx UploadAppGateway
         deposit_funds
         run_upload_tests forwarder-on-evmx Counter
         withdraw_funds
+    }
 
-        ##### SCHEDULER TESTS #####
+    # Scheduler Tests function
+    run_scheduler_tests_func() {
         deploy_appgateway schedule ScheduleAppGateway
         read_timeouts
         trigger_timeouts
         echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
         progress_bar "$MAX_TIMEOUT"
         show_timeout_events
+    }
+
+    # To add a new test suite:
+    # 1. Create a new function like run_new_tests_func()
+    # 2. Add a new RUN_NEWTESTS=false variable below
+    # 3. Add a new flag (e.g., 'n') to getopts string and case statement
+    # 4. Add $RUN_NEWTESTS && run_new_tests_func to execution section
+
+    # Flags - Add new flags here for new test suites
+    RUN_WRITE=false
+    RUN_READ=false
+    RUN_TRIGGER=false
+    RUN_UPLOAD=false
+    RUN_SCHEDULER=false
+    RUN_ALL=false
+
+    # Parse command line options
+    # To extend: Add new single-letter flags to "wrthua" string
+    # and corresponding case in the switch statement
+    while getopts "wrtusa?" opt; do
+        case $opt in
+            w) RUN_WRITE=true;;
+            r) RUN_READ=true;;
+            t) RUN_TRIGGER=true;;
+            u) RUN_UPLOAD=true;;
+            s) RUN_SCHEDULER=true;;
+            a) RUN_ALL=true;;
+            ?) show_help; exit 0;;
+        esac
+    done
+
+    # If no options specified, show help and exit
+    if [ "$OPTIND" -eq 1 ]; then
+        show_help
+        exit 0
     fi
+
+    # If -a is specified, set all test flags to true
+    if $RUN_ALL; then
+        RUN_WRITE=true
+        RUN_READ=true
+        RUN_TRIGGER=true
+        RUN_UPLOAD=true
+        RUN_SCHEDULER=true
+    fi
+
+    # Execute selected tests
+    # To extend: Add new $RUN_ condition and function call here
+    $RUN_WRITE && run_write_tests_func
+    $RUN_READ && run_read_tests_func
+    $RUN_TRIGGER && run_trigger_tests_func
+    $RUN_UPLOAD && run_upload_tests_func
+    $RUN_SCHEDULER && run_scheduler_tests_func
 }
 
-# Run the main function
-main
+# Run the main function with all arguments
+main "$@"
