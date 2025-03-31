@@ -110,6 +110,45 @@ function parse_txhash() {
     echo "Tx Hash: https://$path.blockscout.com/tx/$txhash"
 }
 
+# Function to send transactions with consistent error handling and logging
+send_transaction() {
+    local to="$1"
+    local method="$2"
+    local rpc="$3"
+    local explorer="$4"
+    shift 4  # Remove the first 4 arguments
+
+    echo -e "${CYAN}Sending transaction to $to: $method${NC}"
+    local output
+
+    if [[ "$rpc" == "$EVMX_RPC" ]]; then
+        # Special handling for EVMx
+        if ! output=$(cast send "$to" \
+            "$method" \
+            "$@" \
+            --rpc-url "$rpc" \
+            --private-key "$PRIVATE_KEY" \
+            --legacy \
+            --gas-price 0); then
+            echo -e "${RED}Error:${NC} Transaction failed on $explorer."
+            return 1
+        fi
+    else
+        # Regular transaction for other chains
+        if ! output=$(cast send "$to" \
+            "$method" \
+            "$@" \
+            --rpc-url "$rpc" \
+            --private-key "$PRIVATE_KEY"); then
+            echo -e "${RED}Error:${NC} Transaction failed on $explorer."
+            return 1
+        fi
+    fi
+
+    parse_txhash "$output" "$explorer"
+    return 0
+}
+
 # Function to deploy onchain contracts from chain id
 deploy_onchain() {
     local chainid=$1
@@ -237,7 +276,7 @@ deposit_funds() {
     echo -e "${CYAN}Depositing funds${NC}"
 
     # Deposit funds
-    local output
+    # Note: This is a special case that needs value parameter
     if ! output=$(cast send "$ARBITRUM_FEES_PLUG" \
         --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
         --private-key "$PRIVATE_KEY" \
@@ -291,19 +330,11 @@ withdraw_funds() {
         fi
 
         if [ "$amount_to_withdraw" -gt 0 ]; then
-            # Withdraw funds from the contract
-            local output
-            if ! output=$(cast send "$APP_GATEWAY" \
-                --rpc-url "$EVMX_RPC" \
-                --private-key "$PRIVATE_KEY" \
-                --legacy \
-                --gas-price 0 \
-                "withdrawFeeTokens(uint32,address,uint256,address)" \
-                "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$amount_to_withdraw" "$SENDER_ADDRESS"); then
+            # Withdraw funds using send_transaction
+            if ! send_transaction "$APP_GATEWAY" "withdrawFeeTokens(uint32,address,uint256,address)" "$EVMX_RPC" "evmx.cloud" "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$amount_to_withdraw" "$SENDER_ADDRESS"; then
                 echo -e "${RED}Error:${NC} Failed to withdraw fees."
                 exit 1
             fi
-            parse_txhash "$output" "evmx.cloud"
         else
             echo "No funds available for withdrawal after gas cost estimation."
             exit 0
@@ -433,45 +464,26 @@ run_write_tests() {
     echo -e "${CYAN}Running all write tests functions...${NC}"
     # 1. Trigger Sequential Write
     echo -e "${CYAN}triggerSequentialWrite...${NC}"
-    local output
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "triggerSequentialWrite(address)" "$OP_FORWARDER" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "triggerSequentialWrite(address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger sequential write"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
     await_events 10 "CounterIncreased(address,uint256,uint256)"
 
     # 2. Trigger Parallel Write
     echo -e "${CYAN}triggerParallelWrite...${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "triggerParallelWrite(address)" "$ARB_FORWARDER" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "triggerParallelWrite(address)" "$EVMX_RPC" "evmx.cloud" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger parallel write"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
     await_events 20 "CounterIncreased(address,uint256,uint256)"
 
     # 3. Trigger Alternating Write between chains
     echo -e "${CYAN}triggerAltWrite...${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "triggerAltWrite(address,address)" "$OP_FORWARDER" "$ARB_FORWARDER" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "triggerAltWrite(address,address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger alternating write"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
     await_events 30 "CounterIncreased(address,uint256,uint256)"
     verify_write_events
 }
@@ -482,32 +494,20 @@ run_write_tests() {
 # Function to run all read tests
 run_read_tests() {
     echo -e "${CYAN}Running all read tests functions...${NC}"
-    # 1. Trigger Parallel Write
+    # 1. Trigger Parallel Read
     echo -e "${CYAN}triggerParallelRead...${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "triggerParallelRead(address)" "$ARB_FORWARDER" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "triggerParallelRead(address)" "$EVMX_RPC" "evmx.cloud" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger parallel read"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
     await_events 10
 
-    # 2. Trigger Alternating Write between chains
+    # 2. Trigger Alternating Read between chains
     echo -e "${CYAN}triggerAltRead...${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "triggerAltRead(address,address)" "$OP_FORWARDER" "$ARB_FORWARDER" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "triggerAltRead(address,address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger alternating read"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
     await_events 20 "ValueRead(address,uint256,uint256)"
 }
 
@@ -520,14 +520,10 @@ run_trigger_appgateway_onchain_tests() {
 
     local value_increase=5
     echo -e "${CYAN}Increase on AppGateway from Arbitrum Sepolia${NC}"
-    if ! output=$(cast send "$ARB_ONCHAIN" \
-        "increaseOnGateway(uint256)" "$value_increase" \
-        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
-        --private-key "$PRIVATE_KEY"); then
+    if ! send_transaction "$ARB_ONCHAIN" "increaseOnGateway(uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$value_increase"; then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         return 1
     fi
-    parse_txhash "$output" "arbitrum-sepolia"
     progress_bar 5
     if ! value_evmx=$(cast call "$APP_GATEWAY" \
         "valueOnGateway()" \
@@ -544,16 +540,10 @@ run_trigger_appgateway_onchain_tests() {
     fi
 
     echo -e "${CYAN}Update on Optimism Sepolia from AppGateway${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "updateOnchain(uint32)" "$OP_SEP_CHAIN_ID" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "updateOnchain(uint32)" "$EVMX_RPC" "evmx.cloud" "$OP_SEP_CHAIN_ID"; then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
     progress_bar 5
     if ! value_op=$(cast call "$OP_ONCHAIN" \
         "value()" \
@@ -569,14 +559,10 @@ run_trigger_appgateway_onchain_tests() {
     fi
 
     echo -e "${CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${NC}"
-    if ! output=$(cast send "$OP_ONCHAIN" \
-        "propagateToAnother(uint32)" "$ARB_SEP_CHAIN_ID" \
-        --rpc-url "$OPTIMISM_SEPOLIA_RPC" \
-        --private-key "$PRIVATE_KEY"); then
+    if ! send_transaction "$OP_ONCHAIN" "propagateToAnother(uint32)" "$OPTIMISM_SEPOLIA_RPC" "optimism-sepolia" "$ARB_SEP_CHAIN_ID"; then
         echo -e "${RED}Error:${NC} Failed to send tx on Optimism Sepolia"
         return 1
     fi
-    parse_txhash "$output" "optimism-sepolia"
     progress_bar 5
     if ! value_arb=$(cast call "$ARB_ONCHAIN" \
         "value()" \
@@ -622,39 +608,23 @@ run_upload_tests() {
 
     verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$counter" "$filefolder" "$filename"
     echo -e "${CYAN}Increment counter on Arbitrum Sepolia${NC}"
-    if ! output=$(cast send "$counter" \
-        "increment()" \
-        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
-        --private-key "$PRIVATE_KEY"); then
+    if ! send_transaction "$counter" "increment()" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia"; then
         echo -e "${RED}Error:${NC} Failed to send tx on Arbitrum Sepolia"
         exit 1
     fi
 
-    parse_txhash "$output" "arbitrum-sepolia"
     echo -e "${CYAN}Upload counter to EVMx${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "uploadToEVMx(address,uint32)" "$counter" "$OP_SEP_CHAIN_ID" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "uploadToEVMx(address,uint32)" "$EVMX_RPC" "evmx.cloud" "$counter" "$OP_SEP_CHAIN_ID"; then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         exit 1
     fi
 
-    parse_txhash "$output" "evmx.cloud"
     echo -e "${CYAN}Test read from Counter forwarder address${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "read()" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "read()" "$EVMX_RPC" "evmx.cloud"; then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         exit 1
     fi
 
-    parse_txhash "$output" "evmx.cloud"
     await_events 1 "ReadOnchain(address,uint256)"
 }
 
@@ -692,16 +662,10 @@ read_timeouts() {
 # Function to trigger timeouts
 trigger_timeouts() {
     echo -e "${CYAN}Triggering timeouts...${NC}"
-    if ! output=$(cast send "$APP_GATEWAY" \
-        "triggerTimeouts()" \
-        --rpc-url "$EVMX_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --legacy \
-        --gas-price 0); then
+    if ! send_transaction "$APP_GATEWAY" "triggerTimeouts()" "$EVMX_RPC" "evmx.cloud"; then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         return 1
     fi
-    parse_txhash "$output" "evmx.cloud"
 }
 
 # Function to listen for TimeoutResolved events
