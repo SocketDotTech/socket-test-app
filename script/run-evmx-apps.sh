@@ -21,7 +21,7 @@ progress_bar() {
         local bar
         bar=$(printf "#%.0s" $(seq 1 $i))
         # Pad the bar with spaces to maintain fixed width
-        printf "\rWaiting $duration sec: [%-${width}s] %d%%$" "$bar" "$percent"
+        printf "\r${YELLOW}Waiting $duration sec:${NC} [%-${width}s] %d%%$" "$bar" "$percent"
         sleep "$interval"
     done
     printf "\n"
@@ -55,7 +55,7 @@ prepare_deployment() {
     export EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
 
     # Ensure required variables are set
-    if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ]; then
+    if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ] || [ -z "$FEES_MANAGER" ]; then
         echo -e "${RED}Error:${NC} EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set."
         exit 1
     fi
@@ -90,7 +90,7 @@ deploy_appgateway() {
         exit 1
     fi
 
-    echo -e "AppGateway: https://evmx.cloud.blockscout.com/address/$appgateway"
+    echo -e "${GREEN}AppGateway:${NC} https://evmx.cloud.blockscout.com/address/$appgateway"
     export APP_GATEWAY="$appgateway"
 }
 
@@ -107,7 +107,7 @@ function parse_txhash() {
         exit 1
     fi
 
-    echo "Tx Hash: https://$path.blockscout.com/tx/$txhash"
+    echo -e "${GREEN}Tx Hash:${NC} https://$path.blockscout.com/tx/$txhash"
 }
 
 # Function to send transactions with consistent error handling and logging
@@ -256,7 +256,7 @@ fetch_forwarder_and_onchain_address() {
         bar=$(printf "#%.0s" $(seq 1 $progress))
 
         # Print progress bar on the same line
-        printf "\rWaiting for forwarder: [%-${width}s] %d%%" "$bar" "$percent"
+        printf "\r${YELLOW}Waiting for forwarder:${NC} [%-${width}s] %d%%" "$bar" "$percent"
 
         sleep 5
         attempts=$((attempts + 1))
@@ -278,8 +278,9 @@ fetch_forwarder_and_onchain_address() {
     fi
 
     # Log the retrieved addresses
-    echo "Forwarder for chain $chainid: $forwarder"
-    echo "Onchain for chain $chainid: $onchain"
+    echo -e "${GREEN}Chain $chainid${NC}"
+    echo -e "Forwarder: $forwarder"
+    echo -e "Onchain:   $onchain"
 
     # Handle dynamic chain ID exports (improving flexibility)
     case "$chainid" in
@@ -346,7 +347,7 @@ check_available_fees() {
         bar=$(printf "#%.0s" $(seq 1 $progress))
 
         # Print progress bar on the same line
-        printf "\rChecking fees:[%-${width}s] %d%%" "$bar" "$percent"
+        printf "\r${YELLOW}Checking fees:${NC} [%-${width}s] %d%%" "$bar" "$percent"
 
         sleep 5
         attempt=$((attempt + 1))
@@ -549,7 +550,6 @@ function verify_write_events() {
 run_write_tests() {
     echo -e "${CYAN}Running all write tests functions...${NC}"
     # 1. Trigger Sequential Write
-    echo -e "${CYAN}triggerSequentialWrite...${NC}"
     if ! send_transaction "$APP_GATEWAY" "triggerSequentialWrite(address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger sequential write"
         return 1
@@ -557,7 +557,6 @@ run_write_tests() {
     await_events 10 "CounterIncreased(address,uint256,uint256)"
 
     # 2. Trigger Parallel Write
-    echo -e "${CYAN}triggerParallelWrite...${NC}"
     if ! send_transaction "$APP_GATEWAY" "triggerParallelWrite(address)" "$EVMX_RPC" "evmx.cloud" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger parallel write"
         return 1
@@ -565,7 +564,6 @@ run_write_tests() {
     await_events 20 "CounterIncreased(address,uint256,uint256)"
 
     # 3. Trigger Alternating Write between chains
-    echo -e "${CYAN}triggerAltWrite...${NC}"
     if ! send_transaction "$APP_GATEWAY" "triggerAltWrite(address,address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger alternating write"
         return 1
@@ -581,7 +579,6 @@ run_write_tests() {
 run_read_tests() {
     echo -e "${CYAN}Running all read tests functions...${NC}"
     # 1. Trigger Parallel Read
-    echo -e "${CYAN}triggerParallelRead...${NC}"
     if ! send_transaction "$APP_GATEWAY" "triggerParallelRead(address)" "$EVMX_RPC" "evmx.cloud" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger parallel read"
         return 1
@@ -589,7 +586,6 @@ run_read_tests() {
     await_events 10
 
     # 2. Trigger Alternating Read between chains
-    echo -e "${CYAN}triggerAltRead...${NC}"
     if ! send_transaction "$APP_GATEWAY" "triggerAltRead(address,address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER" "$ARB_FORWARDER"; then
         echo -e "${RED}Error:${NC} Failed to trigger alternating read"
         return 1
