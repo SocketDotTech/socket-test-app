@@ -793,6 +793,18 @@ main() {
         show_timeout_events
     }
 
+    # Revert Tests function
+    run_revert_tests_func() {
+        deploy_appgateway revert RevertAppGateway
+        deposit_funds
+        progress_bar 5
+        deploy_onchain $OP_SEP_CHAIN_ID
+        progress_bar 15
+        fetch_forwarder_and_onchain_address 'counter' $OP_SEP_CHAIN_ID
+        verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" revert Counter
+        withdraw_funds
+    }
+
     # To add a new test suite:
     # 1. Create a new function like run_new_tests_func()
     # 2. Add a new RUN_NEWTESTS=false variable below
@@ -805,18 +817,20 @@ main() {
     RUN_TRIGGER=false
     RUN_UPLOAD=false
     RUN_SCHEDULER=false
+    RUN_REVERT=false
     RUN_ALL=false
 
     # Parse command line options
     # To extend: Add new single-letter flags to "wrthua" string
     # and corresponding case in the switch statement
-    while getopts "wrtusa?" opt; do
+    while getopts "wrtusva?" opt; do
         case $opt in
             w) RUN_WRITE=true;;
             r) RUN_READ=true;;
             t) RUN_TRIGGER=true;;
             u) RUN_UPLOAD=true;;
             s) RUN_SCHEDULER=true;;
+            v) RUN_REVERT=true;;
             a) RUN_ALL=true;;
             ?) show_help; exit 0;;
         esac
@@ -835,6 +849,7 @@ main() {
         RUN_TRIGGER=true
         RUN_UPLOAD=true
         RUN_SCHEDULER=true
+        RUN_REVERT=true
     fi
 
     # Execute selected tests
@@ -844,6 +859,7 @@ main() {
     $RUN_TRIGGER && run_trigger_tests_func
     $RUN_UPLOAD && run_upload_tests_func
     $RUN_SCHEDULER && run_scheduler_tests_func
+    $RUN_REVERT && run_revert_tests_func
 }
 
 # Run the main function with all arguments
