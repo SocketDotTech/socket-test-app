@@ -220,20 +220,47 @@ fetch_forwarder_and_onchain_address() {
         exit 1
     fi
 
-    # Retrieve forwarder address
+    # Retrieve forwarder address with timeout
     local forwarder
-    if ! forwarder=$(cast call "$APP_GATEWAY" \
-        "forwarderAddresses(bytes32,uint32)(address)" \
-        "$contractid" "$chainid" --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error:${NC} Failed to retrieve forwarder address for chain $chainid."
-        exit 1
-    fi
+    local attempts=0
+    local max_attempts=12  # 60 seconds / 5 second sleep = 12 attempts
+    local width=50        # Width of the progress bar
+    local bar
 
-    # Check if the forwarder address is the zero address
-    if [ "$forwarder" == "0x0000000000000000000000000000000000000000" ]; then
-        echo -e "${RED}Error:${NC} Forwarder address is zero for chain $chainid."
-        exit 1
-    fi
+    while true; do
+        if ! forwarder=$(cast call "$APP_GATEWAY" \
+            "forwarderAddresses(bytes32,uint32)(address)" \
+            "$contractid" "$chainid" --rpc-url "$EVMX_RPC"); then
+            echo -e "${RED}Error:${NC} Failed to retrieve forwarder address for chain $chainid."
+            exit 1
+        fi
+
+        # Check if the forwarder address is not the zero address
+        if [ "$forwarder" != "0x0000000000000000000000000000000000000000" ]; then
+            if [ $attempts -ne 0 ]; then
+                printf "\n"  # New line after progress bar
+            fi
+            break
+        fi
+
+        # Check if we've exceeded maximum attempts
+        if [ $attempts -ge $max_attempts ]; then
+            printf "\n"  # New line before error message
+            echo -e "${RED}Error:${NC} Forwarder address is still zero after 60 seconds for chain $chainid."
+            exit 1
+        fi
+
+        # Calculate progress bar
+        local progress=$(( (attempts * width) / max_attempts ))
+        local percent=$(( (attempts * 100) / max_attempts ))
+        bar=$(printf "#%.0s" $(seq 1 $progress))
+
+        # Print progress bar on the same line
+        printf "\rWaiting for forwarder: [%-${width}s] %d%%" "$bar" "$percent"
+
+        sleep 5
+        attempts=$((attempts + 1))
+    done
 
     # Retrieve onchain address
     local onchain
@@ -734,7 +761,6 @@ main() {
         progress_bar 3
         deploy_onchain $ARB_SEP_CHAIN_ID
         deploy_onchain $OP_SEP_CHAIN_ID
-        progress_bar 10
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
         verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" write WriteMultichain
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
@@ -750,7 +776,6 @@ main() {
         progress_bar 3
         deploy_onchain $ARB_SEP_CHAIN_ID
         deploy_onchain $OP_SEP_CHAIN_ID
-        progress_bar 10
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
         verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" read ReadMultichain
         fetch_forwarder_and_onchain_address 'multichain' $OP_SEP_CHAIN_ID
@@ -766,7 +791,6 @@ main() {
         progress_bar 3
         deploy_onchain $ARB_SEP_CHAIN_ID
         deploy_onchain $OP_SEP_CHAIN_ID
-        progress_bar 10
         fetch_forwarder_and_onchain_address 'onchainToEVMx' $ARB_SEP_CHAIN_ID
         verify_onchain_contract "$ARB_SEP_CHAIN_ID" "$ARB_ONCHAIN" trigger-appgateway-onchain OnchainTrigger
         fetch_forwarder_and_onchain_address 'onchainToEVMx' $OP_SEP_CHAIN_ID
@@ -799,7 +823,6 @@ main() {
         deposit_funds
         progress_bar 5
         deploy_onchain $OP_SEP_CHAIN_ID
-        progress_bar 15
         fetch_forwarder_and_onchain_address 'counter' $OP_SEP_CHAIN_ID
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" revert Counter
         withdraw_funds
