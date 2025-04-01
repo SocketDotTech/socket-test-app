@@ -37,11 +37,15 @@ contract RunEVMxRevert is SetupScript {
     function executeScriptSpecificLogic() internal override {
         init();
         getForwarderAddresses();
-        // TODO: Add calls
+        revertAppGateway.testOnChainRevert(arbSepChainId);
+        revertAppGateway.testCallbackRevertWrongInputArgs(arbSepChainId);
+        revertAppGateway.testCallbackRevertNotOnlyPromises(arbSepChainId);
     }
 
     function run() external pure {
-        console.log("Please call one of these external functions: deployAppGateway() and deployOnchainContracts()");
+        console.log(
+            "Please call one of these external functions: deployAppGateway(), deployOnchainContracts() and callReverts()"
+        );
     }
 
     function deployAppGateway() external {
@@ -56,5 +60,9 @@ contract RunEVMxRevert is SetupScript {
     function deployOnchainContracts() external {
         init();
         _deployOnchainContracts();
+    }
+
+    function callReverts() external {
+        _run(arbSepChainId);
     }
 }

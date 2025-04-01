@@ -309,7 +309,7 @@ forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier
 ### 5. **Run EVMx Revert Script**
 Finally, run the EVMx Revert script:
 ```bash
-TODO
+forge script script/revert/RunEVMxRevert.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "callReverts()"
 ```
 
 
