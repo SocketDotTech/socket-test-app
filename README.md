@@ -269,3 +269,51 @@ To withdraw the accumulated fees:
 ```bash
 forge script script/forwarder-on-evmx/RunEVMxForwarder.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
 ```
+
+# Deployment Steps for EVMx Revert
+Follow these steps to deploy and run the EVMx Revert.
+
+### 1. **Deploy the EVMx Revert Tests Script**
+Run the following command to deploy the EVMx Revert tests script:
+```bash
+forge script script/revert/RunEVMxRevert.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployAppGateway()"
+```
+
+### 1a. **Verify the EVMx Contract**
+Verify the `RevertAppGateway` contract on Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc-evmx-devnet.socket.tech/ --verifier blockscout --verifier-url https://evmx.cloud.blockscout.com/api <APP_GATEWAY_ADDRESS> src/revert/RevertAppGateway.sol:RevertAppGateway
+```
+
+### 2. **Update the `APP_GATEWAY` in `.env`**
+Make sure to update the `APP_GATEWAY` address in your `.env` file.
+
+### 3. **Pay Fees in Arbitrum ETH**
+Run the script to pay fees in Arbitrum ETH:
+```bash
+forge script lib/socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol --broadcast --skip-simulation
+```
+
+### 4. **Deploy Onchain Contracts**
+Deploy the onchain contracts using the following script:
+```bash
+forge script script/revert/RunEVMxRevert.s.sol --broadcast --skip-simulation --with-gas-price 0 --legacy --sig "deployOnchainContracts()"
+```
+
+### 4a. **Verify the Onchain Contract**
+Verify the `Counter` contract on Arbitrum Sepolia Blockscout:
+```bash
+forge verify-contract --rpc-url https://rpc.ankr.com/arbitrum_sepolia --verifier-url https://arbitrum-sepolia.blockscout.com/api --verifier blockscout <ONCHAIN_ADDRESS> src/revert/Counter.sol:Counter
+```
+
+### 5. **Run EVMx Revert Script**
+Finally, run the EVMx Revert script:
+```bash
+TODO
+```
+
+
+### 6. Withdraw funds
+```bash
+forge script script/revert/RunEVMxRevert.s.sol --broadcast --sig "withdrawAppFees()" --legacy --with-gas-price 0
+```
