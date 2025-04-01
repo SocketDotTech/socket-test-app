@@ -39,7 +39,6 @@ contract RunEVMxRevert is SetupScript {
         getForwarderAddresses();
         revertAppGateway.testOnChainRevert(arbSepChainId);
         revertAppGateway.testCallbackRevertWrongInputArgs(arbSepChainId);
-        revertAppGateway.testCallbackRevertNotOnlyPromises(arbSepChainId);
     }
 
     function run() external pure {

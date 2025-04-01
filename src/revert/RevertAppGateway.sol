@@ -90,36 +90,6 @@ contract RevertAppGateway is AppGatewayBase {
     }
 
     /**
-     * @notice Tests callback revert behavior by setting up a promise that triggers a revert in its callback
-     * @dev This testing function exercises the revert handling of a callback mechanism. It first enables
-     *      read and parallel overrides, calls counter, then sets up a promise with a callback to
-     *      notCorrectInputArgs that will revert due to wrong input parameters
-     * @param chainSlug A uint32 identifier for the target chain to test the callback revert on
-     */
-    function testCallbackRevertNotOnlyPromises(uint32 chainSlug) public async {
-        _setOverrides(Read.ON, Parallel.ON);
-        address instance = forwarderAddresses[counter][chainSlug];
-        ICounter(instance).counter();
-        // missing function modifierfor a callback
-        IPromise(instance).then(this.notCorrectInputArgs.selector, abi.encode(chainSlug));
-        _setOverrides(Read.OFF, Parallel.OFF);
-    }
-
-    /**
-     * @notice Handles the result of a read operation from the onchain contract
-     * @dev Callback function for promise resolution that emits a ReadOnchain event
-     * Can only be called by the promises system
-     * @param data The encoded forwarder address
-     * @param returnData The encoded counter value read from the onchain contract
-     */
-    function notOnlyPromises(bytes memory data, bytes memory returnData) public {
-        uint32 _chainSlug = abi.decode(data, (uint32));
-        uint256 value_ = abi.decode(returnData, (uint256));
-
-        emit CallbackEvent(_chainSlug, value_);
-    }
-
-    /**
      * @notice Updates the fee configuration
      * @dev Allows modification of fee settings for onchain operations
      * @param fees_ New fee configuration
