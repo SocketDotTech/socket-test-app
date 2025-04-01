@@ -298,6 +298,64 @@ fetch_forwarder_and_onchain_address() {
     esac
 }
 
+# Function to check if there are available fees
+check_available_fees() {
+    local max_attempts=12  # 60 seconds / 5-second interval
+    local attempt=0
+    local available_fees=0
+    local output
+    local width=50
+    local bar
+
+    while true; do
+        if ! output=$(cast call "$FEES_MANAGER" \
+            "getAvailableFees(uint32,address,address)(uint256)" \
+            "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
+            --rpc-url "$EVMX_RPC" 2>/dev/null); then
+            echo -e "${RED}Error:${NC} Failed to retrieve available fees."
+            exit 1
+        else
+            # Extract the fees value
+            available_fees=$(echo "$output" | awk '{print $1}')
+
+            # Validate the fees value is a number
+            if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
+                echo -e "${RED}Error:${NC} Invalid fee value received."
+                exit 1
+            fi
+        fi
+
+        # Check if we got non-zero fees
+        if [ "$available_fees" -ne 0 ]; then
+            if [ $attempt -ne 0 ]; then
+                printf "\n"  # New line after progress bar only if not first attempt
+            fi
+            break
+        fi
+
+        # Check if we've exceeded maximum attempts
+        if [ $attempt -ge $max_attempts ]; then
+            printf "\n"  # New line before error message
+            echo -e "${RED}Error:${NC} No funds available after 60 seconds."
+            exit 1
+        fi
+
+        # Calculate progress bar
+        local progress=$(( (attempt * width) / max_attempts ))
+        local percent=$(( (attempt * 100) / max_attempts ))
+        bar=$(printf "#%.0s" $(seq 1 $progress))
+
+        # Print progress bar on the same line
+        printf "\rChecking fees:[%-${width}s] %d%%" "$bar" "$percent"
+
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+
+    echo -e "Funds available: $available_fees wei"
+    return 0
+}
+
 # Function to deposit funds
 deposit_funds() {
     echo -e "${CYAN}Depositing funds${NC}"
@@ -313,6 +371,7 @@ deposit_funds() {
         exit 1
     fi
     parse_txhash "$output" "arbitrum-sepolia"
+    check_available_fees
 }
 
 # Function to withdraw funds
@@ -758,7 +817,6 @@ main() {
     run_write_tests_func() {
         deploy_appgateway write WriteAppGateway
         deposit_funds
-        progress_bar 3
         deploy_onchain $ARB_SEP_CHAIN_ID
         deploy_onchain $OP_SEP_CHAIN_ID
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
@@ -773,7 +831,6 @@ main() {
     run_read_tests_func() {
         deploy_appgateway read ReadAppGateway
         deposit_funds
-        progress_bar 3
         deploy_onchain $ARB_SEP_CHAIN_ID
         deploy_onchain $OP_SEP_CHAIN_ID
         fetch_forwarder_and_onchain_address 'multichain' $ARB_SEP_CHAIN_ID
@@ -788,7 +845,6 @@ main() {
     run_trigger_tests_func() {
         deploy_appgateway trigger-appgateway-onchain OnchainTriggerAppGateway
         deposit_funds
-        progress_bar 3
         deploy_onchain $ARB_SEP_CHAIN_ID
         deploy_onchain $OP_SEP_CHAIN_ID
         fetch_forwarder_and_onchain_address 'onchainToEVMx' $ARB_SEP_CHAIN_ID
@@ -821,7 +877,6 @@ main() {
     run_revert_tests_func() {
         deploy_appgateway revert RevertAppGateway
         deposit_funds
-        progress_bar 5
         deploy_onchain $OP_SEP_CHAIN_ID
         fetch_forwarder_and_onchain_address 'counter' $OP_SEP_CHAIN_ID
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" revert Counter
