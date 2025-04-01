@@ -16,6 +16,6 @@ git submodule add -b dev https://github.com/SocketDotTech/socket-protocol.git li
 git submodule update --init --recursive
 
 # Commit the update
-#git commit -m "Update socket-protocol submodule"
+git commit -m "Update socket-protocol submodule to latest dev"
 
 echo "SOCKET Protocol submodule updated successfully!"
