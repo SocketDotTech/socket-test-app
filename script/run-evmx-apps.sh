@@ -357,7 +357,7 @@ await_events() {
 
     local event_count_evmx=0
 
-    while [ "$elapsed" -lt "$timeout" ]; do
+    while [ "$elapsed" -le "$timeout" ]; do
         evmx_logs=$(cast logs --rpc-url "$EVMX_RPC" --address "$APP_GATEWAY" "$event")
         event_count_evmx=$(echo "$evmx_logs" | grep -c "blockHash")
 
