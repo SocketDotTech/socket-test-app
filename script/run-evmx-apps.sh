@@ -606,7 +606,8 @@ run_trigger_appgateway_onchain_tests() {
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         return 1
     fi
-    progress_bar 5
+
+    progress_bar 10
     if ! value_evmx=$(cast call "$APP_GATEWAY" \
         "valueOnGateway()" \
         --rpc-url "$EVMX_RPC"); then
@@ -626,7 +627,8 @@ run_trigger_appgateway_onchain_tests() {
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         return 1
     fi
-    progress_bar 5
+
+    progress_bar 10
     if ! value_op=$(cast call "$OP_ONCHAIN" \
         "value()" \
         --rpc-url "$OPTIMISM_SEPOLIA_RPC"); then
@@ -645,7 +647,8 @@ run_trigger_appgateway_onchain_tests() {
         echo -e "${RED}Error:${NC} Failed to send tx on Optimism Sepolia"
         return 1
     fi
-    progress_bar 5
+
+    progress_bar 10
     if ! value_arb=$(cast call "$ARB_ONCHAIN" \
         "value()" \
         --rpc-url "$ARBITRUM_SEPOLIA_RPC"); then
