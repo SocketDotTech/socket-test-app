@@ -14,8 +14,8 @@ interface ICounter {
     function counter() external;
 
     /**
-     * @notice Increases the counter value by 1
+     * @notice Increments the counter value by 1
      * @dev Can only be called by authorized accounts via the SOCKET Protocol
      */
-    function increase() external;
+    function increment() external;
 }

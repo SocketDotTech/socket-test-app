@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "socket-protocol/contracts/base/AppGatewayBase.sol";
 import "socket-protocol/contracts/interfaces/IPromise.sol";
-import "../forwarder-on-evmx//ICounter.sol";
+import "./ICounter.sol";
 
 /**
  * @title UploadAppGateway
