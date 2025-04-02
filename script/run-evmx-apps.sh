@@ -699,7 +699,7 @@ run_upload_tests() {
     fi
 
     echo -e "${CYAN}Upload counter to EVMx${NC}"
-    if ! send_transaction "$APP_GATEWAY" "uploadToEVMx(address,uint32)" "$EVMX_RPC" "evmx.cloud" "$counter" "$OP_SEP_CHAIN_ID"; then
+    if ! send_transaction "$APP_GATEWAY" "uploadToEVMx(address,uint32)" "$EVMX_RPC" "evmx.cloud" "$counter" "$ARB_SEP_CHAIN_ID"; then
         echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
         exit 1
     fi
