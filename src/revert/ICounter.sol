@@ -14,8 +14,14 @@ interface ICounter {
     function counter() external;
 
     /**
-     * @notice Increments the counter value by 1
+     * @notice Increases the counter value by 1
      * @dev Can only be called by authorized accounts via the SOCKET Protocol
      */
     function increment() external;
+
+    /**
+     * @notice This function is not part of the public interface and is intended solely for testing onchain reverts.
+     * @dev Used internally to simulate and verify revert behavior during testing. Not meant for external use.
+     */
+    function unexistentFunction() external;
 }

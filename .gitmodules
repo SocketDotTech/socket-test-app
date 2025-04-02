@@ -4,4 +4,4 @@
 [submodule "lib/socket-protocol"]
 	path = lib/socket-protocol
 	url = https://github.com/SocketDotTech/socket-protocol.git
-	branch = staging
+	branch = master

@@ -68,8 +68,8 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
     function initialize(uint32 chainSlug_) public override {
-        // TODO: call _setValidPlug instead of function below after new contract deployment to devnet
-        setValidPlug(chainSlug_, onchainToEVMx, true);
+        address onchainAddress = getOnChainAddress(onchainToEVMx, chainSlug_);
+        watcherPrecompileConfig().setIsValidPlug(chainSlug_, onchainAddress, true);
     }
 
     /**
@@ -91,7 +91,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param payload_ The encoded message data containing the message type and payload
      *        msgId The transaction identifier (unused)
      */
-    function callFromChain(uint32, address, bytes calldata payload_, bytes32)
+    function callFromChain(uint32, address, bytes32, bytes calldata payload_)
         external
         override
         async
@@ -117,18 +117,6 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      */
     function setFees(Fees memory fees_) public {
         fees = fees_;
-    }
-
-    /**
-     * @notice Sets the validity of an on-chain contract (plug) to authorize it to send information to a specific AppGateway
-     * @param chainSlug_ The unique identifier of the chain where the contract resides
-     * @param contractId The bytes32 identifier of the contract to be validated
-     * @param isValid Boolean flag indicating whether the contract is authorized (true) or not (false)
-     * @dev This function retrieves the onchain address using the contractId and chainSlug, then calls the watcher precompile to update the plug's validity status
-     */
-    function setValidPlug(uint32 chainSlug_, bytes32 contractId, bool isValid) public {
-        address onchainAddress = getOnChainAddress(contractId, chainSlug_);
-        watcherPrecompile__().setIsValidPlug(chainSlug_, onchainAddress, isValid);
     }
 
     /**
