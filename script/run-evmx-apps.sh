@@ -143,6 +143,7 @@ function parse_txhash() {
     fi
 
     echo -e "${GREEN}Tx Hash:${NC} https://$path.blockscout.com/tx/$txhash"
+    export LAST_TX_HASH=$txhash
 }
 
 # Function to send transactions with consistent error handling and logging
@@ -825,6 +826,97 @@ show_timeout_events() {
     done
 }
 
+###################################################
+################## REVERT TESTS ###################
+###################################################
+# Function to run the revert tests
+run_revert_tests() {
+    echo -e "${CYAN}Testing onchain revert${NC}"
+    if ! send_transaction "$APP_GATEWAY" "testOnChainRevert(uint32)" "$EVMX_RPC" "evmx.cloud" "$OP_SEP_CHAIN_ID"; then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        exit 1
+    fi
+
+    local max_attempts=12  # 60 seconds / 5-second interval
+    local attempt=0
+    local status=""
+    local response=""
+    local width=50
+    local bar
+
+    echo -e "${CYAN}Waiting for transaction finalization${NC}"
+    while true; do
+        response=$(curl -s "$EVMX_API_BASE_URL/getDetailsByTxHash?txHash=$LAST_TX_HASH")
+        status=$(echo "$response" | jq -r '.response[0].writePayloads[0].finalizeDetails.finalizeStatus')
+        if [ "$status" = "FINALIZED" ]; then
+            if [ $attempt -ne 0 ]; then
+                printf "\n"  # New line after progress bar only if not first attempt
+            fi
+            break
+        fi
+
+        if [ $attempt -ge $max_attempts ]; then
+            printf "\n"  # New line before error message
+            echo -e "${RED}Error:${NC} Transaction not finalized after 60 seconds. Current status: $status"
+            exit 1
+        fi
+
+        local progress=$(( (attempt * width) / max_attempts ))
+        local percent=$(( (attempt * 100) / max_attempts ))
+        bar=$(printf "#%.0s" $(seq 1 $progress))
+        printf "\r${YELLOW}Waiting for finalization:${NC} [%-${width}s] %d%%" "$bar" "$percent"
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+
+    execute_status=$(echo "$response" | jq -r '.response[0].writePayloads[0].executeDetails.executeStatus')
+    if [ "$execute_status" = "EXECUTION_FAILED" ]; then
+        echo "Execution status is EXECUTION_FAILED as expected"
+    else
+        echo -e "${RED}Error:${NC} Execution status is not EXECUTION_FAILED, it is: $execute_status"
+        exit 1
+    fi
+
+    echo -e "${CYAN}Testing callback revert${NC}"
+    if ! send_transaction "$APP_GATEWAY" "testCallbackRevertWrongInputArgs(uint32)" "$EVMX_RPC" "evmx.cloud" "$OP_SEP_CHAIN_ID"; then
+        echo -e "${RED}Error:${NC} Failed to send tx on EVMx"
+        exit 1
+    fi
+
+    attempt=0
+    status=""
+    response=""
+    bar=0
+
+    echo -e "${CYAN}Waiting for promise failed resolve${NC}"
+    while true; do
+        response=$(curl -s "$EVMX_API_BASE_URL/getDetailsByTxHash?txHash=$LAST_TX_HASH")
+        status=$(echo "$response" | jq -r '.response[0].readPayloads[0].callBackDetails.callbackStatus')
+        if [ "$status" = "PROMISE_RESOLVE_FAILED" ]; then
+            if [ $attempt -ne 0 ]; then
+                printf "\n"  # New line after progress bar only if not first attempt
+            fi
+            break
+        fi
+
+        if [ $attempt -ge $max_attempts ]; then
+            printf "\n"  # New line before error message
+            echo -e "${RED}Error:${NC} Transaction not finalized after 60 seconds. Current status: $status"
+            exit 1
+        fi
+
+        local progress=$(( (attempt * width) / max_attempts ))
+        local percent=$(( (attempt * 100) / max_attempts ))
+        bar=$(printf "#%.0s" $(seq 1 $progress))
+        printf "\r${YELLOW}Waiting for finalization:${NC} [%-${width}s] %d%%" "$bar" "$percent"
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+}
+
+###################################################
+################# MAIN FUNCTIONS ##################
+###################################################
 # Help function to display usage
 show_help() {
     echo "Usage: $0 [OPTIONS]"
@@ -914,6 +1006,7 @@ main() {
         deploy_onchain $OP_SEP_CHAIN_ID
         fetch_forwarder_and_onchain_address 'counter' $OP_SEP_CHAIN_ID
         verify_onchain_contract "$OP_SEP_CHAIN_ID" "$OP_ONCHAIN" revert Counter
+        run_revert_tests
         withdraw_funds
     }
 
