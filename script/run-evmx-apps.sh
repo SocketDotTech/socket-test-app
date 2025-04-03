@@ -44,6 +44,46 @@ prepare_deployment() {
     echo -e "${CYAN}Loading environment variables from .env${NC}"
     source .env
 
+    # Ensure required variables are set
+    if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ] || [ -z "$FEES_MANAGER" ]; then
+        echo -e "${RED}Error:${NC} EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set."
+        exit 1
+    fi
+
+    # Check for jq and install if not present
+    if ! command -v jq >/dev/null 2>&1; then
+        echo -e "${CYAN}jq not found, attempting to install...${NC}"
+        # Detect OS
+        case "$(uname -s)" in
+            Darwin)
+                # macOS
+                if ! command -v brew >/dev/null 2>&1; then
+                    echo -e "${CYAN}Installing Homebrew first...${NC}"
+                    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                fi
+                brew install jq
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}Error:${NC} Failed to install jq on macOS"
+                    exit 1
+                fi
+                ;;
+            Linux)
+                # Ubuntu/Debian assumed
+                sudo apt-get update
+                sudo apt-get install -y jq
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}Error:${NC} Failed to install jq on Linux"
+                    exit 1
+                fi
+                ;;
+            *)
+                echo -e "${RED}Error:${NC} Unsupported OS for automatic jq installation"
+                exit 1
+                ;;
+        esac
+        echo -e "${CYAN}jq installed successfully${NC}"
+    fi
+
     # Constants
     export ARB_SEP_CHAIN_ID=421614
     export OP_SEP_CHAIN_ID=11155420
@@ -53,12 +93,7 @@ prepare_deployment() {
     export GAS_BUFFER="100000000"  # 0.1 Gwei in wei
     export GAS_LIMIT="3000000"  # Gas limit estimate
     export EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
-
-    # Ensure required variables are set
-    if [ -z "$EVMX_RPC" ] || [ -z "$PRIVATE_KEY" ] || [ -z "$ADDRESS_RESOLVER" ] || [ -z "$FEES_MANAGER" ]; then
-        echo -e "${RED}Error:${NC} EVMX_RPC, PRIVATE_KEY, or ADDRESS_RESOLVER is not set."
-        exit 1
-    fi
+    export EVMX_API_BASE_URL="https://api-evmx-devnet.socket.tech"
 }
 
 # Function to deploy contract
