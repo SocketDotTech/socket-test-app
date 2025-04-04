@@ -100,6 +100,8 @@ prepare_deployment() {
 deploy_appgateway() {
     local filefolder=$1
     local filename=$2
+    local deploy_fees=${3:-$DEPLOY_FEES_AMOUNT}  # Use $3 if provided, otherwise default to $DEPLOY_FEES_AMOUNT
+
     echo -e "${CYAN}Deploying $filename contract${NC}"
     local output
     if ! output=$(forge create src/"$filefolder"/"$filename".sol:"$filename" \
@@ -111,7 +113,7 @@ deploy_appgateway() {
         --verify \
         --verifier-url "$EVMX_VERIFIER_URL" \
         --verifier blockscout \
-        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)"); then
+        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $deploy_fees)"); then
         echo -e "${RED}Error:${NC} Contract deployment failed."
         exit 1
     fi
@@ -154,7 +156,7 @@ send_transaction() {
     local explorer="$4"
     shift 4  # Remove the first 4 arguments
 
-    echo -e "${CYAN}Sending transaction to $to: $method${NC}"
+    echo -e "${CYAN}Sending transaction to $method on $to${NC}"
     local output
 
     if [[ "$rpc" == "$EVMX_RPC" ]]; then
@@ -750,6 +752,102 @@ run_upload_tests() {
 }
 
 ###################################################
+############# INSUFFICIENT FEES TESTS #############
+###################################################
+# Function to fetch the requestCount from a transaction hash
+parse_request_count_from_tx_hash() {
+    receipt=$(cast receipt "$LAST_TX_HASH" --rpc-url "$EVMX_RPC" --json)
+
+    # Extract matching log's data field
+    # cast keccak "RequestSubmitted(address,uint40,(bytes32,address,address,address,address,bytes32,bytes32,uint256,uint256,uint256,uint256,bytes,address)[])"
+    request_submitted_keccak="0xb856562fcff2119ba754f0486f47c06087ebc1842bff464faf1b2a1f8d273b1d"
+    data_hex=$(echo "$receipt" | jq -r --arg topic0 "$request_submitted_keccak" '
+      .logs[]
+      | select(.topics[0] == $topic0)
+      | .data
+    ')
+
+    data_hex=$(echo "$data_hex" | sed 's/^0x//' | tr 'A-F' 'a-f')
+    uint40_hex=${data_hex:64:64}
+    uint40=$(echo "ibase=16; $(echo "$uint40_hex" | tr 'a-f' 'A-F')" | bc)
+    echo "Payload requestCount (decimal): $uint40"
+    export REQUEST_COUNT=$uint40
+}
+
+# Function to run insufficient fees to EVMx tests
+run_insufficient_fees_tests() {
+    local contractname=$1
+    local chainid=$2
+    echo -e "${CYAN}Testing fees for '$contractname' on chain $chainid${NC}"
+    local contractid
+    contractid=$(cast call "$APP_GATEWAY" "$contractname()(bytes32)" --rpc-url "$EVMX_RPC" || {
+        echo -e "${RED}Error:${NC} Failed to get contract ID"
+        exit 1
+    })
+
+    # Wait for valid forwarder address with progress bar
+    local attempts=0
+    local max_attempts=15
+    local width=50
+    local forwarder
+    local bar
+    while [ $attempts -lt $max_attempts ]; do
+        forwarder=$(cast call "$APP_GATEWAY" \
+            "forwarderAddresses(bytes32,uint32)(address)" \
+            "$contractid" "$chainid" --rpc-url "$EVMX_RPC" || echo "error")
+
+        if [ "$forwarder" != "error" ] && [ "$forwarder" != "0x0000000000000000000000000000000000000000" ]; then
+            [ $attempts -ne 0 ] && printf "\n"
+            echo "$forwarder"
+            return 0
+        fi
+
+        local progress=$(( (attempts * width) / max_attempts ))
+        local percent=$(( (attempts * 100) / max_attempts ))
+        bar=$(printf "#%.0s" $(seq 1 $progress))
+        printf "\r${YELLOW}Waiting for forwarder:${NC} [%-${width}s] %d%%" "$bar" "$percent"
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+    printf "\n"
+    echo "No valid forwarder after $max_attempts seconds"
+    parse_request_count_from_tx_hash
+
+    # Set fees
+    send_transaction "$APP_GATEWAY" "increaseFees(uint40,uint256)" "$EVMX_RPC" "evmx.cloud" \
+        "$REQUEST_COUNT" "$DEPLOY_FEES_AMOUNT" || {
+        echo -e "${RED}Error:${NC} Failed to set fees"
+        return 1
+    }
+
+    # Verify forwarder after fees
+    attempts=0
+    bar=""
+    while [ $attempts -lt $max_attempts ]; do
+        forwarder=$(cast call "$APP_GATEWAY" \
+            "forwarderAddresses(bytes32,uint32)(address)" \
+            "$contractid" "$chainid" --rpc-url "$EVMX_RPC" || echo "error")
+
+        if [ "$forwarder" != "error" ] && [ "$forwarder" != "0x0000000000000000000000000000000000000000" ]; then
+            [ $attempts -ne 0 ] && printf "\n"
+            echo -e "${GREEN}Chain $chainid${NC}"
+            echo -e "Forwarder: $forwarder"
+            return 0
+        fi
+
+        local progress=$(( (attempts * width) / max_attempts ))
+        local percent=$(( (attempts * 100) / max_attempts ))
+        bar=$(printf "#%.0s" $(seq 1 $progress))
+        printf "\r${YELLOW}Waiting for forwarder:${NC} [%-${width}s] %d%%" "$bar" "$percent"
+        sleep 5
+        attempts=$((attempts + 1))
+    done
+    printf "\n"
+    echo -e "${RED}Error:${NC} No valid forwarder after $((max_attempts * 5)) seconds"
+    exit 1
+}
+
+###################################################
 ################ SCHEDULER TESTS ##################
 ###################################################
 # Function to read timeouts from the contract
@@ -989,6 +1087,15 @@ main() {
         withdraw_funds
     }
 
+    # Insufficient Fees Tests function
+    run_insufficient_fees_tests_func() {
+        deploy_appgateway read ReadAppGateway 0 # Zero Max fees to force no transmitter biding
+        deposit_funds
+        deploy_onchain $OP_SEP_CHAIN_ID
+        run_insufficient_fees_tests 'multichain' $OP_SEP_CHAIN_ID
+        withdraw_funds
+    }
+
     # Scheduler Tests function
     run_scheduler_tests_func() {
         deploy_appgateway schedule ScheduleAppGateway
@@ -1021,6 +1128,7 @@ main() {
     RUN_READ=false
     RUN_TRIGGER=false
     RUN_UPLOAD=false
+    RUN_FEES=false
     RUN_SCHEDULER=false
     RUN_REVERT=false
     RUN_ALL=false
@@ -1028,12 +1136,13 @@ main() {
     # Parse command line options
     # To extend: Add new single-letter flags to "wrthua" string
     # and corresponding case in the switch statement
-    while getopts "wrtusva?" opt; do
+    while getopts "wrtuisva?" opt; do
         case $opt in
             w) RUN_WRITE=true;;
             r) RUN_READ=true;;
             t) RUN_TRIGGER=true;;
             u) RUN_UPLOAD=true;;
+            i) RUN_FEES=true;;
             s) RUN_SCHEDULER=true;;
             v) RUN_REVERT=true;;
             a) RUN_ALL=true;;
@@ -1053,6 +1162,7 @@ main() {
         RUN_READ=true
         RUN_TRIGGER=true
         RUN_UPLOAD=true
+        RUN_FEES=true
         RUN_SCHEDULER=true
         RUN_REVERT=true
     fi
@@ -1063,6 +1173,7 @@ main() {
     $RUN_READ && run_read_tests_func
     $RUN_TRIGGER && run_trigger_tests_func
     $RUN_UPLOAD && run_upload_tests_func
+    $RUN_FEES && run_insufficient_fees_tests_func
     $RUN_SCHEDULER && run_scheduler_tests_func
     $RUN_REVERT && run_revert_tests_func
 }
