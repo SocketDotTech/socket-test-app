@@ -156,7 +156,7 @@ send_transaction() {
     local explorer="$4"
     shift 4  # Remove the first 4 arguments
 
-    echo -e "${CYAN}Sending transaction to $to: $method${NC}"
+    echo -e "${CYAN}Sending transaction to $method on $to${NC}"
     local output
 
     if [[ "$rpc" == "$EVMX_RPC" ]]; then
