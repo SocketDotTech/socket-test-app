@@ -100,6 +100,8 @@ prepare_deployment() {
 deploy_appgateway() {
     local filefolder=$1
     local filename=$2
+    local deploy_fees=${3:-$DEPLOY_FEES_AMOUNT}  # Use $3 if provided, otherwise default to $DEPLOY_FEES_AMOUNT
+
     echo -e "${CYAN}Deploying $filename contract${NC}"
     local output
     if ! output=$(forge create src/"$filefolder"/"$filename".sol:"$filename" \
@@ -111,7 +113,7 @@ deploy_appgateway() {
         --verify \
         --verifier-url "$EVMX_VERIFIER_URL" \
         --verifier blockscout \
-        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $DEPLOY_FEES_AMOUNT)"); then
+        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $deploy_fees)"); then
         echo -e "${RED}Error:${NC} Contract deployment failed."
         exit 1
     fi
