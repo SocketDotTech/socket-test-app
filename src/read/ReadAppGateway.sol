@@ -135,4 +135,14 @@ contract ReadAppGateway is AppGatewayBase {
     function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
         _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
     }
+
+    /**
+     * @notice Increases the fee payment for a specific payload request
+     * @dev Allows modification of fee settings for a specific payload
+     * @param requestCount_ Request count taken from api or from RequestSubmitted event
+     * @param newMaxFees_ New max fee limit for this payload request
+     */
+    function increaseFees(uint40 requestCount_, uint256 newMaxFees_) public {
+        _increaseFees(requestCount_, newMaxFees_);
+    }
 }
