@@ -352,19 +352,20 @@ check_available_fees() {
     local width=50
     local bar
 
-    while true; do
+    while [ $attempt -lt $max_attempts ]; do
         if ! output=$(cast call "$FEES_MANAGER" \
-            "getAvailableFees(uint32,address,address)(uint256)" \
-            "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
+            "getAvailableCredits(address)(uint256)" \
+            "$APP_GATEWAY" \
             --rpc-url "$EVMX_RPC" 2>/dev/null); then
+            printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
             echo -e "${RED}Error:${NC} Failed to retrieve available fees."
             exit 1
         else
             # Extract the fees value
             available_fees=$(echo "$output" | awk '{print $1}')
-
             # Validate the fees value is a number
             if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
+                printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
                 echo -e "${RED}Error:${NC} Invalid fee value received."
                 exit 1
             fi
@@ -372,17 +373,9 @@ check_available_fees() {
 
         # Check if we got non-zero fees
         if [ "$available_fees" -ne 0 ]; then
-            if [ $attempt -ne 0 ]; then
-                printf "\n"  # New line after progress bar only if not first attempt
-            fi
-            break
-        fi
-
-        # Check if we've exceeded maximum attempts
-        if [ $attempt -ge $max_attempts ]; then
-            printf "\n"  # New line before error message
-            echo -e "${RED}Error:${NC} No funds available after 60 seconds."
-            exit 1
+            printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
+            echo -e "Funds available: $available_fees wei"
+            return 0
         fi
 
         # Calculate progress bar
