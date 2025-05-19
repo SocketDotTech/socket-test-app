@@ -114,11 +114,12 @@ deploy_appgateway() {
         --verify \
         --verifier-url "$EVMX_VERIFIER_URL" \
         --verifier blockscout \
-        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $deploy_fees)"); then
+        --constructor-args "$ADDRESS_RESOLVER" "$deploy_fees"); then
         echo -e "${RED}Error:${NC} Contract deployment failed."
         exit 1
     fi
 
+    parse_txhash "$output" "evmx.cloud"
     # Extract the deployed address
     local appgateway
     appgateway=$(echo "$output" | grep "Deployed to:" | awk '{print $3}')
@@ -138,6 +139,10 @@ function parse_txhash() {
     local path=$2
     local txhash
     txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
+    if [ -z "$txhash" ]; then
+        txhash=$(echo "$output" | grep -i "Transaction hash:" | awk '{print $3}')
+    fi
+
     # Check if txhash is empty or invalid
     if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         echo -e "${RED}Error:${NC} Failed to extract valid transactionHash from output."
