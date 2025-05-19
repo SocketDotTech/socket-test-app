@@ -30,8 +30,8 @@ abstract contract SetupScript is Script {
     uint32 opSepChainId = 11155420;
     uint32[2] chainIds = [opSepChainId, arbSepChainId];
 
-    Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
-    Fees deployFees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.0005 ether});
+    uint256 fees = 30 ether;
+    uint256 deployFees = 10 ether;
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
     FeesPlug feesPlug = FeesPlug(payable(feesPlugArbSepolia));
 

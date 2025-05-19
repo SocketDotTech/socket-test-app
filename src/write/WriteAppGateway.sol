@@ -33,7 +33,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
         _setOverrides(fees_);
     }
