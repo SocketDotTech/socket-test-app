@@ -88,8 +88,9 @@ prepare_deployment() {
     export ARB_SEP_CHAIN_ID=421614
     export OP_SEP_CHAIN_ID=11155420
     export ETH_ADDRESS=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    export DEPLOY_FEES_AMOUNT=500000000000000  # 0.0005 ETH in wei
-    export FEES_AMOUNT="1000000000000000"  # 0.001 ETH in wei
+    export DEPLOY_FEES_AMOUNT=10000000000000000000  # 10 ETH in wei
+    export FEES_AMOUNT=30000000000000000000  # 30 ETH in wei
+    export TEST_USDC_AMOUNT="100000000"  # 100 TEST USDC
     export GAS_BUFFER="100000000"  # 0.1 Gwei in wei
     export GAS_LIMIT="3000000"  # Gas limit estimate
     export EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
@@ -391,25 +392,34 @@ check_available_fees() {
         attempt=$((attempt + 1))
     done
 
-    echo -e "Funds available: $available_fees wei"
-    return 0
+    # If we get here, we've exceeded maximum attempts
+    printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
+    echo -e "${RED}Error:${NC} No funds available after 60 seconds."
+    exit 1
 }
 
 # Function to deposit funds
 deposit_funds() {
     echo -e "${CYAN}Depositing funds${NC}"
 
-    # Deposit funds
-    # Note: This is a special case that needs value parameter
-    if ! output=$(cast send "$ARBITRUM_FEES_PLUG" \
-        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --value "$FEES_AMOUNT" \
-        "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT"); then
-        echo -e "${RED}Error:${NC} Failed to deposit fees."
-        exit 1
+    # Mint test USDC
+    if ! send_transaction "$ARBITRUM_TEST_USDC" "mint(address,uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$WALLET_ADDRESS" "$TEST_USDC_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to mint test USDC."
+        return 1
     fi
-    parse_txhash "$output" "arbitrum-sepolia"
+
+    # Approve USDC for FeesPlug
+    if ! send_transaction "$ARBITRUM_TEST_USDC" "approve(address,uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$ARBITRUM_FEES_PLUG" "$TEST_USDC_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to approve test USDC to FeesPlug."
+        return 1
+    fi
+
+    # Deposit funds
+    if ! send_transaction "$ARBITRUM_FEES_PLUG" "depositToFeeAndNative(address,address,uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$ARBITRUM_TEST_USDC" "$APP_GATEWAY" "$TEST_USDC_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to deposit to fees and native."
+        return 1
+    fi
+
     check_available_fees
 }
 
