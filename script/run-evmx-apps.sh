@@ -413,6 +413,12 @@ deposit_funds() {
     fi
 
     check_available_fees
+    # Set Max Fees on AppGateway
+    if ! send_transaction "$APP_GATEWAY" "setMaxFees(uint256)" "$EVMX_RPC" "arbitrum-sepolia" "$FEES_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to set max fees on AppGateway."
+        return 1
+    fi
+
 }
 
 # Function to withdraw funds

@@ -35,7 +35,7 @@ contract WriteAppGateway is AppGatewayBase {
      */
     constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
-        _setOverrides(fees_);
+        _setMaxFees(fees_);
     }
 
     /**
@@ -119,5 +119,14 @@ contract WriteAppGateway is AppGatewayBase {
      */
     function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
         _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
     }
 }

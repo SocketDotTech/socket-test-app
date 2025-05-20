@@ -55,7 +55,7 @@ contract DeploymentAppGateway is AppGatewayBase {
         creationCodeWithArgs[plugInitialize] = abi.encodePacked(type(PlugInitialize).creationCode);
         creationCodeWithArgs[plugInitializeTwice] = abi.encodePacked(type(PlugInitializeTwice).creationCode);
         creationCodeWithArgs[plugNoInitInitialize] = abi.encodePacked(type(PlugNoInitInitialize).creationCode);
-        _setOverrides(fees_);
+        _setMaxFees(fees_);
     }
 
     /**
