@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
 import "./OnchainTrigger.sol";
 import "./IOnchainTrigger.sol";
 
@@ -58,7 +58,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async {
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
         _deploy(onchainToEVMx, chainSlug_, IsPlug.YES);
     }
 
@@ -77,7 +77,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Sends the current valueOnGateway to the OnchainTrigger contract on the specified chain
      * @param targetChain The identifier of the destination chain
      */
-    function updateOnchain(uint32 targetChain) public async {
+    function updateOnchain(uint32 targetChain) public async(bytes("")) {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnGateway);
     }
@@ -93,8 +93,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      */
     function callFromChain(uint32, address, bytes32, bytes calldata payload_)
         external
-        override
-        async
+        async(bytes(""))
         onlyWatcherPrecompile
     {
         (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
@@ -108,15 +107,6 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
         } else {
             revert("OnchainTriggerGateway: invalid message type");
         }
-    }
-
-    /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for onchain operations
-     * @param fees_ New fee configuration
-     */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
     }
 
     /**

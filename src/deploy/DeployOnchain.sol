@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "socket-protocol/contracts/base/PlugBase.sol";
+import "socket-protocol/contracts/protocol/base/PlugBase.sol";
 
 /**
  * @title NoPlugNoInititialize

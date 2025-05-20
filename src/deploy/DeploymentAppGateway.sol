@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
 import "./DeployOnchain.sol";
 import "./IDeployOnchain.sol";
 
@@ -63,7 +63,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Triggers asynchronous multi-chain deployments with different initialization scenarios
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async {
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
         _deploy(noPlugNoInititialize, chainSlug_, IsPlug.NO);
         _deploy(
             noPlugInitialize, chainSlug_, IsPlug.NO, abi.encodeWithSelector(NoPlugInitialize.initialise.selector, 10)
@@ -84,7 +84,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Calls initialize functions on specific contracts after deployment
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function initialize(uint32 chainSlug_) public override async {
+    function initialize(uint32 chainSlug_) public override async(bytes("")) {
         PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]).initialise(10);
         PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]).initialise(10);
     }
@@ -94,7 +94,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Performs checks on each contract type to ensure proper initialization and functionality
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function contractValidation(uint32 chainSlug_) external async {
+    function contractValidation(uint32 chainSlug_) external async(bytes("")) {
         address noPlugNoInititializeForwarder = forwarderAddresses[noPlugNoInititialize][chainSlug_];
         address noPlugInitializeForwarder = forwarderAddresses[noPlugInitialize][chainSlug_];
         address plugNoInitializeForwarder = forwarderAddresses[plugNoInitialize][chainSlug_];
@@ -160,15 +160,6 @@ contract DeploymentAppGateway is AppGatewayBase {
         address onchainSocket = abi.decode(returnData, (address));
         address notSocket = abi.decode(data, (address));
         require(onchainSocket != notSocket, "Should return socket address");
-    }
-
-    /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for onchain operations
-     * @param fees_ New fee configuration
-     */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
     }
 
     /**

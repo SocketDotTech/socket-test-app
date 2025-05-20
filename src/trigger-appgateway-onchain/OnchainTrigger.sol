@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "solady/auth/Ownable.sol";
-import "socket-protocol/contracts/base/PlugBase.sol";
+import "socket-protocol/contracts/protocol/base/PlugBase.sol";
 
 /**
  * @title OnchainTrigger
@@ -36,7 +36,7 @@ contract OnchainTrigger is Ownable, PlugBase {
      * @return The transaction ID of the onchain message
      */
     function increaseOnGateway(uint256 value_) external returns (bytes32) {
-        return _callAppGateway(abi.encode(INCREASE_ON_GATEWAY, abi.encode(value_)), bytes32(0));
+        //return _callAppGateway(abi.encode(INCREASE_ON_GATEWAY, abi.encode(value_)), bytes32(0));
     }
 
     /**
@@ -46,7 +46,7 @@ contract OnchainTrigger is Ownable, PlugBase {
      * @return The transaction ID of the onchain message
      */
     function propagateToAnother(uint32 targetChain) external returns (bytes32) {
-        return _callAppGateway(abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(value, targetChain)), bytes32(0));
+        //return _callAppGateway(abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(value, targetChain)), bytes32(0));
     }
 
     /**
