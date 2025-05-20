@@ -347,11 +347,10 @@ fetch_forwarder_and_onchain_address() {
 check_available_fees() {
     local max_attempts=12  # 60 seconds / 5-second interval
     local attempt=0
-    local available_fees=0
+    local available_fees="0"
     local output
     local width=50
     local bar
-
     while [ $attempt -lt $max_attempts ]; do
         if ! output=$(cast call "$FEES_MANAGER" \
             "getAvailableCredits(address)(uint256)" \
@@ -370,26 +369,21 @@ check_available_fees() {
                 exit 1
             fi
         fi
-
         # Check if we got non-zero fees
-        if [ "$available_fees" -ne 0 ]; then
+        if [ "$available_fees" != "0" ]; then
             printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
             echo -e "Funds available: $available_fees wei"
             return 0
         fi
-
         # Calculate progress bar
         local progress=$(( (attempt * width) / max_attempts ))
         local percent=$(( (attempt * 100) / max_attempts ))
         bar=$(printf "#%.0s" $(seq 1 $progress))
-
         # Print progress bar on the same line
         printf "\r${YELLOW}Checking fees:${NC} [%-${width}s] %d%%" "$bar" "$percent"
-
         sleep 5
         attempt=$((attempt + 1))
     done
-
     # If we get here, we've exceeded maximum attempts
     printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
     echo -e "${RED}Error:${NC} No funds available after 60 seconds."
