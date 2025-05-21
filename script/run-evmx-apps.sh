@@ -621,7 +621,7 @@ run_read_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger parallel read"
         return 1
     fi
-    await_events 10
+    await_events 10 "ValueRead(address,uint256,uint256)"
 
     # 2. Trigger Alternating Read between chains
     if ! send_transaction "$APP_GATEWAY" "triggerAltRead(address,address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER" "$ARB_FORWARDER"; then
