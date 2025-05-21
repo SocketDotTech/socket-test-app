@@ -92,7 +92,7 @@ prepare_deployment() {
     export FEES_AMOUNT=30000000000000000000  # 30 ETH in wei
     export TEST_USDC_AMOUNT="100000000"  # 100 TEST USDC
     export GAS_BUFFER="100000000"  # 0.1 Gwei in wei
-    export GAS_LIMIT="3000000"  # Gas limit estimate
+    export GAS_LIMIT="50000000000"  # Gas limit estimate
     export EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
     export EVMX_API_BASE_URL="https://api-evmx-devnet.socket.tech"
 }
@@ -422,43 +422,41 @@ withdraw_funds() {
     # Get available fees from EVMX chain
     local output
     if ! output=$(cast call "$FEES_MANAGER" \
-        "getAvailableFees(uint32,address,address)(uint256)" \
-        "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
-        --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error:${NC} Failed to get available fees."
+        "getAvailableCredits(address)(uint256)" \
+        "$APP_GATEWAY" \
+        --rpc-url "$EVMX_RPC" 2>/dev/null); then
+        echo -e "${RED}Error:${NC} Failed to retrieve available fees."
         exit 1
     fi
 
     local available_fees
     available_fees=$(echo "$output" | awk '{print $1}')
-
-    # Ensure it's a valid integer before proceeding
+    # Validate the fees value is a number
     if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
-        echo -e "${RED}Error:${NC} Invalid available fees value: $available_fees"
+        echo -e "${RED}Error:${NC} Invalid fee value received."
         exit 1
     fi
 
     echo "Available Fees: $available_fees wei"
-
     # Check if there are funds to withdraw
-    if [ "$available_fees" -gt 0 ]; then
+    if [ "$available_fees" != "0" ]; then
         # Fetch gas price on Arbitrum Sepolia
         local arb_gas_price
         arb_gas_price=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
-
         # Add buffer to gas price
-        local gas_price=$((arb_gas_price + GAS_BUFFER))
-        local estimated_gas_cost=$((GAS_LIMIT * gas_price))
-
+        local gas_price
+        local estimated_gas_cost
+        gas_price=$(echo "$arb_gas_price + $GAS_BUFFER" | bc)
+        estimated_gas_cost=$(echo "$GAS_LIMIT * $gas_price" | bc)
         # Calculate withdrawal amount
         local amount_to_withdraw=0
-        if [ "$available_fees" -gt "$estimated_gas_cost" ]; then
-            amount_to_withdraw=$((available_fees - estimated_gas_cost))
+        if (( $(echo "$available_fees > $estimated_gas_cost" | bc -l) )); then
+            amount_to_withdraw=$(echo "$available_fees - $estimated_gas_cost" | bc)
         fi
-
-        if [ "$amount_to_withdraw" -gt 0 ]; then
+        echo "Withdrawing $amount_to_withdraw wei"
+        if (( $(echo "$amount_to_withdraw > 0" | bc -l) )); then
             # Withdraw funds using send_transaction
-            if ! send_transaction "$APP_GATEWAY" "withdrawFeeTokens(uint32,address,uint256,address)" "$EVMX_RPC" "evmx.cloud" "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$amount_to_withdraw" "$SENDER_ADDRESS"; then
+            if ! send_transaction "$APP_GATEWAY" "withdrawFeeTokens(uint32,address,uint256,address)" "$EVMX_RPC" "evmx.cloud" "$ARB_SEP_CHAIN_ID" "$ARBITRUM_TEST_USDC" "$amount_to_withdraw" "$SENDER_ADDRESS"; then
                 echo -e "${RED}Error:${NC} Failed to withdraw fees."
                 exit 1
             fi
