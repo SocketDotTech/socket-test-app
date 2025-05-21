@@ -267,7 +267,7 @@ fetch_forwarder_and_onchain_address() {
     # Retrieve forwarder address with timeout
     local forwarder
     local attempts=0
-    local max_attempts=12  # 60 seconds / 5 second sleep = 12 attempts
+    local max_attempts=30  # 60 seconds / 2 second sleep = 30 attempts
     local width=50        # Width of the progress bar
     local bar
 
@@ -302,7 +302,7 @@ fetch_forwarder_and_onchain_address() {
         # Print progress bar on the same line
         printf "\r${YELLOW}Waiting for forwarder:${NC} [%-${width}s] %d%%" "$bar" "$percent"
 
-        sleep 5
+        sleep 2
         attempts=$((attempts + 1))
     done
 
