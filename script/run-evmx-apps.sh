@@ -1099,6 +1099,7 @@ main() {
     # Scheduler Tests function
     run_scheduler_tests_func() {
         deploy_appgateway schedule ScheduleAppGateway
+        deposit_funds
         read_timeouts
         trigger_timeouts
         echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
