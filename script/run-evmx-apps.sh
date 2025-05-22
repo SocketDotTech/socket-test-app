@@ -474,7 +474,7 @@ withdraw_funds() {
 await_events() {
     local expected_new_events=$1  # Number of new events to expect
     local event=$2                # Event ABI
-    local timeout=60              # Maximum wait time in seconds
+    local timeout=180              # Maximum wait time in seconds
     local interval=2              # Check every 2 seconds
     local elapsed=0               # Time elapsed
 
