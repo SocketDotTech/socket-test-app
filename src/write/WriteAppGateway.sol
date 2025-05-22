@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
 import "./IWriteMultichain.sol";
 import "./WriteMultichain.sol";
 
@@ -33,9 +33,9 @@ contract WriteAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
-        _setOverrides(fees_);
+        _setMaxFees(fees_);
     }
 
     /**
@@ -43,7 +43,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async {
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
         _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
@@ -61,7 +61,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Calls the increase function 10 times in sequence and processes the return values
      * @param instance_ Address of the WriteMultichain instance to write to
      */
-    function triggerSequentialWrite(address instance_) public async {
+    function triggerSequentialWrite(address instance_) public async(bytes("")) {
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
             IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
@@ -73,7 +73,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Calls the increase function 10 times in parallel and processes the return values
      * @param instance_ Address of the WriteMultichain instance to write to
      */
-    function triggerParallelWrite(address instance_) public async {
+    function triggerParallelWrite(address instance_) public async(bytes("")) {
         _setOverrides(Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
@@ -88,7 +88,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @param instance1_ Address of the first WriteMultichain instance
      * @param instance2_ Address of the second WriteMultichain instance
      */
-    function triggerAltWrite(address instance1_, address instance2_) public async {
+    function triggerAltWrite(address instance1_, address instance2_) public async(bytes("")) {
         for (uint256 i = 0; i < 5; i++) {
             IWriteMultichain(instance1_).increase();
             IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));
@@ -110,15 +110,6 @@ contract WriteAppGateway is AppGatewayBase {
     }
 
     /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for multi-chain operations
-     * @param fees_ New fee configuration
-     */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
-    }
-
-    /**
      * @notice Withdraws fee tokens from the SOCKET Protocol
      * @dev Allows withdrawal of accumulated fees to a specified receiver
      * @param chainSlug_ The chain from which to withdraw fees
@@ -128,5 +119,14 @@ contract WriteAppGateway is AppGatewayBase {
      */
     function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
         _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
     }
 }

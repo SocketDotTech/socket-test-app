@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/interfaces/IForwarder.sol";
-import "socket-protocol/contracts/interfaces/IPromise.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/evmx/interfaces/IForwarder.sol";
+import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
 import "./IReadMultichain.sol";
 import "./ReadMultichain.sol";
 
@@ -41,9 +41,9 @@ contract ReadAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(ReadMultichain).creationCode);
-        _setOverrides(fees_);
+        _setMaxFees(fees_);
         values = new uint256[](10);
     }
 
@@ -52,7 +52,7 @@ contract ReadAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol.
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async {
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
         _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
@@ -71,7 +71,7 @@ contract ReadAppGateway is AppGatewayBase {
      * and stores the results in the values array.
      * @param instance_ Address of the ReadMultichain instance to read from
      */
-    function triggerParallelRead(address instance_) public async {
+    function triggerParallelRead(address instance_) public async(bytes("")) {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IReadMultichain(instance_).values(i);
@@ -87,7 +87,7 @@ contract ReadAppGateway is AppGatewayBase {
      * @param instance1_ Address of the first ReadMultichain instance
      * @param instance2_ Address of the second ReadMultichain instance
      */
-    function triggerAltRead(address instance1_, address instance2_) public async {
+    function triggerAltRead(address instance1_, address instance2_) public async(bytes("")) {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             if (i % 2 == 0) {
@@ -113,15 +113,6 @@ contract ReadAppGateway is AppGatewayBase {
 
         values[index_] = value_;
         emit ValueRead(instance, index_, value_);
-    }
-
-    /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for multi-chain operations
-     * @param fees_ New fee configuration
-     */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
     }
 
     /**

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/interfaces/IPromise.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
 import "./ICounter.sol";
 
 /**
@@ -31,8 +31,8 @@ contract UploadAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
-        _setOverrides(fees_);
+    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
+        _setMaxFees(fees_);
     }
 
     /**
@@ -40,7 +40,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Required by AppGatewayBase but not used in this implementation
      * @param chainSlug_ The identifier of the target chain (unused)
      */
-    function deployContracts(uint32 chainSlug_) external async {}
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {}
 
     /**
      * @notice Empty initialization function as no post-deployment setup is needed
@@ -64,7 +64,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Initiates an asynchronous read operation with parallel execution enabled
      * Sets up a promise to handle the read result via the handleRead function
      */
-    function read() public async {
+    function read() public async(bytes("")) {
         _setOverrides(Read.ON, Parallel.ON);
         // TODO: Remove Parallel.ON after new contract deployment to devnet
         ICounter(counterForwarder).counter();
@@ -84,15 +84,6 @@ contract UploadAppGateway is AppGatewayBase {
         uint256 value_ = abi.decode(returnData, (uint256));
 
         emit ReadOnchain(instance, value_);
-    }
-
-    /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for onchain operations
-     * @param fees_ New fee configuration
-     */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
     }
 
     /**

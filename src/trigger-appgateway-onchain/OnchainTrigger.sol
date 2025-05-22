@@ -2,7 +2,9 @@
 pragma solidity ^0.8.21;
 
 import "solady/auth/Ownable.sol";
-import "socket-protocol/contracts/base/PlugBase.sol";
+import "socket-protocol/contracts/protocol/base/PlugBase.sol";
+
+import "./IOnchainAppGateway.sol";
 
 /**
  * @title OnchainTrigger
@@ -18,25 +20,13 @@ contract OnchainTrigger is Ownable, PlugBase {
     uint256 public value;
 
     /**
-     * @notice Message type identifier for increasing value on the gateway
-     * @dev Used to differentiate message types in multi-chain communication
-     */
-    uint32 public constant INCREASE_ON_GATEWAY = 1;
-
-    /**
-     * @notice Message type identifier for propagating value to another chain
-     * @dev Used to differentiate message types in multi-chain communication
-     */
-    uint32 public constant PROPAGATE_TO_ANOTHER = 2;
-
-    /**
      * @notice Triggers an operation to increase a value on the gateway
      * @dev Sends a message to the gateway to increase its value using SOCKET Protocol
      * @param value_ The amount to increase
      * @return The transaction ID of the onchain message
      */
     function increaseOnGateway(uint256 value_) external returns (bytes32) {
-        return _callAppGateway(abi.encode(INCREASE_ON_GATEWAY, abi.encode(value_)), bytes32(0));
+        return IOnchainAppGateway(address(socket__)).callFromChain(value_);
     }
 
     /**
@@ -46,7 +36,7 @@ contract OnchainTrigger is Ownable, PlugBase {
      * @return The transaction ID of the onchain message
      */
     function propagateToAnother(uint32 targetChain) external returns (bytes32) {
-        return _callAppGateway(abi.encode(PROPAGATE_TO_ANOTHER, abi.encode(value, targetChain)), bytes32(0));
+        return IOnchainAppGateway(address(socket__)).propagateToChain(value, targetChain);
     }
 
     /**

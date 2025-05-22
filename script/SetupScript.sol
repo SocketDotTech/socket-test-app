@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {DepositFees} from "socket-protocol/script/helpers/PayFeesInArbitrumETH.s.sol";
-import {Fees} from "socket-protocol/contracts/protocol/utils/common/Structs.sol";
-import {FeesPlug} from "socket-protocol/contracts/protocol/payload-delivery/FeesPlug.sol";
-import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/protocol/utils/common/Constants.sol";
-import {FeesManager} from "socket-protocol/contracts/protocol/payload-delivery/FeesManager.sol";
+import {FeesPlug} from "socket-protocol/contracts/evmx/payload-delivery/FeesPlug.sol";
+import {ETH_ADDRESS, FAST} from "socket-protocol/contracts/utils/common/Constants.sol";
+import {FeesManager} from "socket-protocol/contracts/evmx/payload-delivery/FeesManager.sol";
 
 interface IAppGateway {
     function deployContracts(uint32 chainId) external;
@@ -30,30 +29,21 @@ abstract contract SetupScript is Script {
     uint32 opSepChainId = 11155420;
     uint32[2] chainIds = [opSepChainId, arbSepChainId];
 
-    Fees fees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.001 ether});
-    Fees deployFees = Fees({feePoolChain: arbSepChainId, feePoolToken: ETH_ADDRESS, amount: 0.0005 ether});
+    uint256 fees = 30 ether;
+    uint256 deployFees = 10 ether;
     FeesManager feesManager = FeesManager(payable(feesManagerAddress));
     FeesPlug feesPlug = FeesPlug(payable(feesPlugArbSepolia));
 
-    function checkDepositedFees(uint32 chainId) internal returns (uint256 availableFees) {
+    function checkDepositedFees() internal returns (uint256 availableFees) {
         vm.createSelectFork(rpcEVMx);
 
-        (uint256 deposited, uint256 blocked) =
-            feesManager.appGatewayFeeBalances(appGatewayAddress, chainId, ETH_ADDRESS);
+        availableFees = feesManager.getAvailableCredits(appGatewayAddress);
         console.log("App Gateway:", appGatewayAddress);
-        console.log("Deposited fees:", deposited);
-        console.log("Blocked fees:", blocked);
-
-        availableFees = feesManager.getAvailableFees(chainId, appGatewayAddress, ETH_ADDRESS);
         console.log("Available fees:", availableFees);
     }
 
     function _withdrawAppFees(uint32 chainId) internal {
-        // EVMX Check available fees
-        vm.createSelectFork(rpcEVMx);
-
-        uint256 availableFees = feesManager.getAvailableFees(chainId, appGatewayAddress, ETH_ADDRESS);
-        console.log("Available fees:", availableFees);
+        uint256 availableFees = checkDepositedFees();
 
         if (availableFees > 0) {
             // Switch to Arbitrum Sepolia to get gas price
@@ -126,7 +116,7 @@ abstract contract SetupScript is Script {
     // Standard flow
     // Each implementation script will call these functions
     function _run(uint32 chainId) internal {
-        uint256 availableFees = checkDepositedFees(chainId);
+        uint256 availableFees = checkDepositedFees();
 
         if (availableFees > 0) {
             executeScriptSpecificLogic();

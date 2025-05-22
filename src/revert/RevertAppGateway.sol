@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/interfaces/IPromise.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
 import "./ICounter.sol";
 import "./Counter.sol";
 
@@ -26,9 +26,9 @@ contract RevertAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[counter] = abi.encodePacked(type(Counter).creationCode);
-        _setOverrides(fees_);
+        _setMaxFees(fees_);
     }
 
     /**
@@ -36,7 +36,7 @@ contract RevertAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async {
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
         _deploy(counter, chainSlug_, IsPlug.YES);
     }
 
@@ -45,7 +45,7 @@ contract RevertAppGateway is AppGatewayBase {
      * @dev Sets up the validity of the deployed OnchainTrigger contract on the specified chain
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
-    function initialize(uint32 chainSlug_) public override async {
+    function initialize(uint32 chainSlug_) public override async(bytes("")) {
         address instance = forwarderAddresses[counter][chainSlug_];
         ICounter(instance).increment();
     }
@@ -57,7 +57,7 @@ contract RevertAppGateway is AppGatewayBase {
      *         unexistentFunction exists on the interface but not on the onchain contract. This will cause an onchain revert.
      * @param chainSlug A uint32 identifier for the target chain to test the revert on
      */
-    function testOnChainRevert(uint32 chainSlug) public async {
+    function testOnChainRevert(uint32 chainSlug) public async(bytes("")) {
         address instance = forwarderAddresses[counter][chainSlug];
         ICounter(instance).unexistentFunction();
     }
@@ -69,7 +69,7 @@ contract RevertAppGateway is AppGatewayBase {
      *      notCorrectInputArgs that will revert due to wrong input parameters
      * @param chainSlug A uint32 identifier for the target chain to test the callback revert on
      */
-    function testCallbackRevertWrongInputArgs(uint32 chainSlug) public async {
+    function testCallbackRevertWrongInputArgs(uint32 chainSlug) public async(bytes("")) {
         _setOverrides(Read.ON, Parallel.ON);
         address instance = forwarderAddresses[counter][chainSlug];
         ICounter(instance).counter();
@@ -87,15 +87,6 @@ contract RevertAppGateway is AppGatewayBase {
      */
     function notCorrectInputArgs(uint32 someWrongParam) public onlyPromises {
         emit CallbackEvent(someWrongParam, 0);
-    }
-
-    /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for onchain operations
-     * @param fees_ New fee configuration
-     */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
     }
 
     /**

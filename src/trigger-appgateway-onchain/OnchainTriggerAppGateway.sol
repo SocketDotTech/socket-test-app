@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "socket-protocol/contracts/base/AppGatewayBase.sol";
-import "./OnchainTrigger.sol";
+import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
 import "./IOnchainTrigger.sol";
+import "./OnchainTrigger.sol";
 
 /**
  * @title OnchainTriggerAppGateway
@@ -48,9 +48,9 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, Fees memory fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
         creationCodeWithArgs[onchainToEVMx] = abi.encodePacked(type(OnchainTrigger).creationCode);
-        _setOverrides(fees_);
+        _setMaxFees(fees_);
     }
 
     /**
@@ -58,7 +58,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async {
+    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
         _deploy(onchainToEVMx, chainSlug_, IsPlug.YES);
     }
 
@@ -77,46 +77,31 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Sends the current valueOnGateway to the OnchainTrigger contract on the specified chain
      * @param targetChain The identifier of the destination chain
      */
-    function updateOnchain(uint32 targetChain) public async {
+    function updateOnchain(uint32 targetChain) public async(bytes("")) {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnGateway);
     }
 
     /**
-     * @notice Handles incoming messages from OnchainTrigger contracts
-     * @dev Processes different message types from OnchainTrigger contracts
+     * @notice Updates AppGateway value from OnchainTrigger contracts
+     * @dev Updates AppGateway value from OnchainTrigger contracts
      * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
-     *        chainSlug_ The identifier of the source chain (unused)
-     *        sourceAddress The address of the sender contract (unused)
-     * @param payload_ The encoded message data containing the message type and payload
-     *        msgId The transaction identifier (unused)
+     * @param value Value to update from the onchain contract on AppGateway
      */
-    function callFromChain(uint32, address, bytes32, bytes calldata payload_)
-        external
-        override
-        async
-        onlyWatcherPrecompile
-    {
-        (uint32 msgType, bytes memory payload) = abi.decode(payload_, (uint32, bytes));
-        if (msgType == INCREASE_ON_GATEWAY) {
-            uint256 valueOnchain = abi.decode(payload, (uint256));
-            valueOnGateway += valueOnchain;
-        } else if (msgType == PROPAGATE_TO_ANOTHER) {
-            (uint256 valueOnchain, uint32 targetChain) = abi.decode(payload, (uint256, uint32));
-            address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
-            IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnchain);
-        } else {
-            revert("OnchainTriggerGateway: invalid message type");
-        }
+    function callFromChain(uint256 value) external async(bytes("")) onlyWatcherPrecompile {
+        valueOnGateway += value;
     }
 
     /**
-     * @notice Updates the fee configuration
-     * @dev Allows modification of fee settings for onchain operations
-     * @param fees_ New fee configuration
+     * @notice Updates OnchainTrigger contract value from another OnchainTrigger contract
+     * @dev Updates OnchainTrigger contract value from another OnchainTrigger contract
+     * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
+     * @param value Value to update on the other OnchainTrigger contract
+     * @param targetChain Chain where the value should be updated
      */
-    function setFees(Fees memory fees_) public {
-        fees = fees_;
+    function propagateToChain(uint256 value, uint32 targetChain) external async(bytes("")) onlyWatcherPrecompile {
+        address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
+        IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(value);
     }
 
     /**

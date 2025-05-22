@@ -88,10 +88,11 @@ prepare_deployment() {
     export ARB_SEP_CHAIN_ID=421614
     export OP_SEP_CHAIN_ID=11155420
     export ETH_ADDRESS=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    export DEPLOY_FEES_AMOUNT=500000000000000  # 0.0005 ETH in wei
-    export FEES_AMOUNT="1000000000000000"  # 0.001 ETH in wei
+    export DEPLOY_FEES_AMOUNT=10000000000000000000  # 10 ETH in wei
+    export FEES_AMOUNT=30000000000000000000  # 30 ETH in wei
+    export TEST_USDC_AMOUNT="100000000"  # 100 TEST USDC
     export GAS_BUFFER="100000000"  # 0.1 Gwei in wei
-    export GAS_LIMIT="3000000"  # Gas limit estimate
+    export GAS_LIMIT="50000000000"  # Gas limit estimate
     export EVMX_VERIFIER_URL="https://evmx.cloud.blockscout.com/api"
     export EVMX_API_BASE_URL="https://api-evmx-devnet.socket.tech"
 }
@@ -113,11 +114,12 @@ deploy_appgateway() {
         --verify \
         --verifier-url "$EVMX_VERIFIER_URL" \
         --verifier blockscout \
-        --constructor-args "$ADDRESS_RESOLVER" "($ARB_SEP_CHAIN_ID, $ETH_ADDRESS, $deploy_fees)"); then
+        --constructor-args "$ADDRESS_RESOLVER" "$deploy_fees"); then
         echo -e "${RED}Error:${NC} Contract deployment failed."
         exit 1
     fi
 
+    parse_txhash "$output" "evmx.cloud"
     # Extract the deployed address
     local appgateway
     appgateway=$(echo "$output" | grep "Deployed to:" | awk '{print $3}')
@@ -137,6 +139,10 @@ function parse_txhash() {
     local path=$2
     local txhash
     txhash=$(echo "$output" | grep "^transactionHash" | awk '{print $2}')
+    if [ -z "$txhash" ]; then
+        txhash=$(echo "$output" | grep -i "Transaction hash:" | awk '{print $3}')
+    fi
+
     # Check if txhash is empty or invalid
     if [ -z "$txhash" ] || ! [[ "$txhash" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
         echo -e "${RED}Error:${NC} Failed to extract valid transactionHash from output."
@@ -261,7 +267,7 @@ fetch_forwarder_and_onchain_address() {
     # Retrieve forwarder address with timeout
     local forwarder
     local attempts=0
-    local max_attempts=12  # 60 seconds / 5 second sleep = 12 attempts
+    local max_attempts=30  # 60 seconds / 2 second sleep = 30 attempts
     local width=50        # Width of the progress bar
     local bar
 
@@ -296,7 +302,7 @@ fetch_forwarder_and_onchain_address() {
         # Print progress bar on the same line
         printf "\r${YELLOW}Waiting for forwarder:${NC} [%-${width}s] %d%%" "$bar" "$percent"
 
-        sleep 5
+        sleep 2
         attempts=$((attempts + 1))
     done
 
@@ -341,75 +347,71 @@ fetch_forwarder_and_onchain_address() {
 check_available_fees() {
     local max_attempts=12  # 60 seconds / 5-second interval
     local attempt=0
-    local available_fees=0
+    local available_fees="0"
     local output
     local width=50
     local bar
-
-    while true; do
+    while [ $attempt -lt $max_attempts ]; do
         if ! output=$(cast call "$FEES_MANAGER" \
-            "getAvailableFees(uint32,address,address)(uint256)" \
-            "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
+            "getAvailableCredits(address)(uint256)" \
+            "$APP_GATEWAY" \
             --rpc-url "$EVMX_RPC" 2>/dev/null); then
+            printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
             echo -e "${RED}Error:${NC} Failed to retrieve available fees."
             exit 1
         else
             # Extract the fees value
             available_fees=$(echo "$output" | awk '{print $1}')
-
             # Validate the fees value is a number
             if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
+                printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
                 echo -e "${RED}Error:${NC} Invalid fee value received."
                 exit 1
             fi
         fi
-
         # Check if we got non-zero fees
-        if [ "$available_fees" -ne 0 ]; then
-            if [ $attempt -ne 0 ]; then
-                printf "\n"  # New line after progress bar only if not first attempt
-            fi
-            break
+        if [ "$available_fees" != "0" ]; then
+            printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
+            echo -e "Funds available: $available_fees wei"
+            return 0
         fi
-
-        # Check if we've exceeded maximum attempts
-        if [ $attempt -ge $max_attempts ]; then
-            printf "\n"  # New line before error message
-            echo -e "${RED}Error:${NC} No funds available after 60 seconds."
-            exit 1
-        fi
-
         # Calculate progress bar
         local progress=$(( (attempt * width) / max_attempts ))
         local percent=$(( (attempt * 100) / max_attempts ))
         bar=$(printf "#%.0s" $(seq 1 $progress))
-
         # Print progress bar on the same line
         printf "\r${YELLOW}Checking fees:${NC} [%-${width}s] %d%%" "$bar" "$percent"
-
         sleep 5
         attempt=$((attempt + 1))
     done
-
-    echo -e "Funds available: $available_fees wei"
-    return 0
+    # If we get here, we've exceeded maximum attempts
+    printf "\r%*s\r" $((width + 30)) ""  # Clear the progress bar
+    echo -e "${RED}Error:${NC} No funds available after 60 seconds."
+    exit 1
 }
 
 # Function to deposit funds
 deposit_funds() {
     echo -e "${CYAN}Depositing funds${NC}"
 
-    # Deposit funds
-    # Note: This is a special case that needs value parameter
-    if ! output=$(cast send "$ARBITRUM_FEES_PLUG" \
-        --rpc-url "$ARBITRUM_SEPOLIA_RPC" \
-        --private-key "$PRIVATE_KEY" \
-        --value "$FEES_AMOUNT" \
-        "deposit(address,address,uint256)" "$ETH_ADDRESS" "$APP_GATEWAY" "$FEES_AMOUNT"); then
-        echo -e "${RED}Error:${NC} Failed to deposit fees."
-        exit 1
+    # Mint test USDC
+    if ! send_transaction "$ARBITRUM_TEST_USDC" "mint(address,uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$WALLET_ADDRESS" "$TEST_USDC_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to mint test USDC."
+        return 1
     fi
-    parse_txhash "$output" "arbitrum-sepolia"
+
+    # Approve USDC for FeesPlug
+    if ! send_transaction "$ARBITRUM_TEST_USDC" "approve(address,uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$ARBITRUM_FEES_PLUG" "$TEST_USDC_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to approve test USDC to FeesPlug."
+        return 1
+    fi
+
+    # Deposit funds
+    if ! send_transaction "$ARBITRUM_FEES_PLUG" "depositToFeeAndNative(address,address,uint256)" "$ARBITRUM_SEPOLIA_RPC" "arbitrum-sepolia" "$ARBITRUM_TEST_USDC" "$APP_GATEWAY" "$TEST_USDC_AMOUNT"; then
+        echo -e "${RED}Error:${NC} Failed to deposit to fees and native."
+        return 1
+    fi
+
     check_available_fees
 }
 
@@ -420,43 +422,41 @@ withdraw_funds() {
     # Get available fees from EVMX chain
     local output
     if ! output=$(cast call "$FEES_MANAGER" \
-        "getAvailableFees(uint32,address,address)(uint256)" \
-        "$ARB_SEP_CHAIN_ID" "$APP_GATEWAY" "$ETH_ADDRESS" \
-        --rpc-url "$EVMX_RPC"); then
-        echo -e "${RED}Error:${NC} Failed to get available fees."
+        "getAvailableCredits(address)(uint256)" \
+        "$APP_GATEWAY" \
+        --rpc-url "$EVMX_RPC" 2>/dev/null); then
+        echo -e "${RED}Error:${NC} Failed to retrieve available fees."
         exit 1
     fi
 
     local available_fees
     available_fees=$(echo "$output" | awk '{print $1}')
-
-    # Ensure it's a valid integer before proceeding
+    # Validate the fees value is a number
     if ! [[ "$available_fees" =~ ^[0-9]+$ ]]; then
-        echo -e "${RED}Error:${NC} Invalid available fees value: $available_fees"
+        echo -e "${RED}Error:${NC} Invalid fee value received."
         exit 1
     fi
 
     echo "Available Fees: $available_fees wei"
-
     # Check if there are funds to withdraw
-    if [ "$available_fees" -gt 0 ]; then
+    if [ "$available_fees" != "0" ]; then
         # Fetch gas price on Arbitrum Sepolia
         local arb_gas_price
         arb_gas_price=$(cast base-fee --rpc-url "$ARBITRUM_SEPOLIA_RPC")
-
         # Add buffer to gas price
-        local gas_price=$((arb_gas_price + GAS_BUFFER))
-        local estimated_gas_cost=$((GAS_LIMIT * gas_price))
-
+        local gas_price
+        local estimated_gas_cost
+        gas_price=$(echo "$arb_gas_price + $GAS_BUFFER" | bc)
+        estimated_gas_cost=$(echo "$GAS_LIMIT * $gas_price" | bc)
         # Calculate withdrawal amount
         local amount_to_withdraw=0
-        if [ "$available_fees" -gt "$estimated_gas_cost" ]; then
-            amount_to_withdraw=$((available_fees - estimated_gas_cost))
+        if (( $(echo "$available_fees > $estimated_gas_cost" | bc -l) )); then
+            amount_to_withdraw=$(echo "$available_fees - $estimated_gas_cost" | bc)
         fi
-
-        if [ "$amount_to_withdraw" -gt 0 ]; then
+        echo "Withdrawing $amount_to_withdraw wei"
+        if (( $(echo "$amount_to_withdraw > 0" | bc -l) )); then
             # Withdraw funds using send_transaction
-            if ! send_transaction "$APP_GATEWAY" "withdrawFeeTokens(uint32,address,uint256,address)" "$EVMX_RPC" "evmx.cloud" "$ARB_SEP_CHAIN_ID" "$ETH_ADDRESS" "$amount_to_withdraw" "$SENDER_ADDRESS"; then
+            if ! send_transaction "$APP_GATEWAY" "withdrawFeeTokens(uint32,address,uint256,address)" "$EVMX_RPC" "evmx.cloud" "$ARB_SEP_CHAIN_ID" "$ARBITRUM_TEST_USDC" "$amount_to_withdraw" "$SENDER_ADDRESS"; then
                 echo -e "${RED}Error:${NC} Failed to withdraw fees."
                 exit 1
             fi
@@ -474,7 +474,7 @@ withdraw_funds() {
 await_events() {
     local expected_new_events=$1  # Number of new events to expect
     local event=$2                # Event ABI
-    local timeout=60              # Maximum wait time in seconds
+    local timeout=180              # Maximum wait time in seconds
     local interval=2              # Check every 2 seconds
     local elapsed=0               # Time elapsed
 
@@ -621,7 +621,7 @@ run_read_tests() {
         echo -e "${RED}Error:${NC} Failed to trigger parallel read"
         return 1
     fi
-    await_events 10
+    await_events 10 "ValueRead(address,uint256,uint256)"
 
     # 2. Trigger Alternating Read between chains
     if ! send_transaction "$APP_GATEWAY" "triggerAltRead(address,address)" "$EVMX_RPC" "evmx.cloud" "$OP_FORWARDER" "$ARB_FORWARDER"; then
@@ -1099,6 +1099,7 @@ main() {
     # Scheduler Tests function
     run_scheduler_tests_func() {
         deploy_appgateway schedule ScheduleAppGateway
+        deposit_funds
         read_timeouts
         trigger_timeouts
         echo -e "${CYAN}Waiting for the highest timeout before reading logs...${NC}"
