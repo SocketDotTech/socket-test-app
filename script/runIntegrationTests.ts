@@ -151,7 +151,6 @@ async function buildContracts(): Promise<void> {
 
 // Deploy contract function
 async function deployContract(
-  contractPath: string,
   contractName: string,
   constructorArgs: any[] = [],
   deployFees = DEPLOY_FEES_AMOUNT,
@@ -161,7 +160,7 @@ async function deployContract(
 
   try {
     // Read the compiled contract
-    const artifactPath = path.join('out', contractPath, `${contractName}.sol`, `${contractName}.json`);
+    const artifactPath = path.join('out', `${contractName}.sol`, `${contractName}.json`);
     const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
 
     const abi = artifact.abi;
@@ -177,6 +176,7 @@ async function deployContract(
       gasPrice: chainConfig.chainId === EVMX_CHAIN_ID ? 0n : undefined
     });
 
+    await new Promise(resolve => setTimeout(resolve, 2000));
     LAST_TX_HASH = hash;
     console.log(`${colors.GREEN}Tx Hash:${colors.NC} ${getExplorerUrl(hash, chainConfig)}`);
 
@@ -227,6 +227,7 @@ async function sendTransaction(
       gasPrice: chainConfig.chainId === EVMX_CHAIN_ID ? 0n : undefined
     });
 
+    await new Promise(resolve => setTimeout(resolve, 2000));
     LAST_TX_HASH = hash;
     console.log(`${colors.GREEN}Tx Hash:${colors.NC} ${getExplorerUrl(hash, chainConfig)}`);
 
@@ -239,12 +240,10 @@ async function sendTransaction(
 
 // Deploy AppGateway
 async function deployAppGateway(
-  filefolder: string,
   filename: string,
   deployFees = DEPLOY_FEES_AMOUNT
 ): Promise<Address> {
   return deployContract(
-    path.join('src', filefolder, `${filename}.sol`),
     filename,
     [process.env.ADDRESS_RESOLVER, deployFees],
     deployFees,
@@ -627,7 +626,7 @@ async function main(): Promise<void> {
     // Write Tests
     if (flags.write) {
       console.log(`${colors.GREEN}=== Running Write Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('write', 'WriteAppGateway');
+      addresses.appGateway = await deployAppGateway('WriteAppGateway');
       await depositFunds(addresses.appGateway);
       await deployOnchain(ARB_SEP_CHAIN_ID, addresses.appGateway);
       await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
@@ -647,7 +646,7 @@ async function main(): Promise<void> {
     // Read Tests
     if (flags.read) {
       console.log(`${colors.GREEN}=== Running Read Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('read', 'ReadAppGateway');
+      addresses.appGateway = await deployAppGateway('ReadAppGateway');
       await depositFunds(addresses.appGateway);
       await deployOnchain(ARB_SEP_CHAIN_ID, addresses.appGateway);
       await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
