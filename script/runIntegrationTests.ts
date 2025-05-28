@@ -150,7 +150,6 @@ async function buildContracts(): Promise<void> {
 async function deployContract(
   contractName: string,
   constructorArgs: any[] = [],
-  deployFees = DEPLOY_FEES_AMOUNT,
   chainConfig: ChainConfig = evmxChain
 ): Promise<Address> {
   console.log(`${colors.CYAN}Deploying ${contractName} contract${colors.NC}`);
@@ -241,7 +240,6 @@ async function deployAppGateway(
   return deployContract(
     filename,
     [process.env.ADDRESS_RESOLVER, deployFees],
-    deployFees,
     evmxChain
   );
 }
@@ -298,7 +296,7 @@ async function fetchForwarderAndOnchainAddress(
     }) as Address;
 
     if (forwarder !== '0x0000000000000000000000000000000000000000') {
-      if (attempts > 0) console.log(''); // New line after progress bar
+      if (attempts > 0) process.stdout.write('\r\x1b[2K');
       break;
     }
 
@@ -306,12 +304,12 @@ async function fetchForwarderAndOnchainAddress(
     const percent = Math.floor((attempts * 100) / maxAttempts);
     process.stdout.write(`\r${colors.YELLOW}Waiting for forwarder:${colors.NC} ${percent}%`);
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     attempts++;
   }
 
   if (forwarder === '0x0000000000000000000000000000000000000000') {
-    throw new Error(`Forwarder address is still zero after ${maxAttempts * 2} seconds for chain ${chainId}`);
+    throw new Error(`Forwarder address is still zero after ${maxAttempts} seconds for chain ${chainId}`);
   }
 
   // Get onchain address
@@ -335,7 +333,7 @@ async function fetchForwarderAndOnchainAddress(
 
 // Check available fees
 async function checkAvailableFees(appGateway: Address): Promise<bigint> {
-  const maxAttempts = 12;
+  const maxAttempts = 60;
   let attempt = 0;
   let availableFees = 0n;
 
@@ -365,7 +363,7 @@ async function checkAvailableFees(appGateway: Address): Promise<bigint> {
     const percent = Math.floor((attempt * 100) / maxAttempts);
     process.stdout.write(`\r${colors.YELLOW}Checking fees:${colors.NC} ${percent}%`);
 
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     attempt++;
   }
 
@@ -481,7 +479,8 @@ async function awaitEvents(
       eventCount = logs.length;
 
       if (eventCount >= expectedNewEvents) {
-        console.log(`\nTotal events on EVMx: ${eventCount} (reached expected ${expectedNewEvents})`);
+        process.stdout.write(`\r`);
+        console.log(`\nTotal events on EVMx: ${eventCount} reached (expected ${expectedNewEvents})`);
         break;
       }
 
@@ -497,7 +496,7 @@ async function awaitEvents(
   }
 
   if (eventCount < expectedNewEvents) {
-    throw new Error(`Timed out after ${timeout} seconds. Expected ${expectedNewEvents} logs, found ${eventCount}.`);
+    throw new Error(`\nTimed out after ${timeout} seconds. Expected ${expectedNewEvents} logs, found ${eventCount}.`);
   }
 }
 
