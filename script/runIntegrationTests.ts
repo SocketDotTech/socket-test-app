@@ -53,9 +53,6 @@ let evmxChain: ChainConfig;
 let arbChain: ChainConfig;
 let opChain: ChainConfig;
 
-// Global variables
-let LAST_TX_HASH: Hash = '0x';
-
 // Constants
 const EVMX_CHAIN_ID = 43;
 const ARB_SEP_CHAIN_ID = 421614;
@@ -177,7 +174,6 @@ async function deployContract(
     });
 
     await new Promise(resolve => setTimeout(resolve, 2000));
-    LAST_TX_HASH = hash;
     console.log(`${colors.GREEN}Tx Hash:${colors.NC} ${getExplorerUrl(hash, chainConfig)}`);
 
     // Get the deployed address
@@ -228,7 +224,6 @@ async function sendTransaction(
     });
 
     await new Promise(resolve => setTimeout(resolve, 2000));
-    LAST_TX_HASH = hash;
     console.log(`${colors.GREEN}Tx Hash:${colors.NC} ${getExplorerUrl(hash, chainConfig)}`);
 
     return hash;
