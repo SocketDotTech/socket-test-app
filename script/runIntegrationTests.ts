@@ -9,7 +9,7 @@ import {
   type Abi,
   type Hash,
   type Address,
-  type PublicClient,
+  //type PublicClient,
   type WalletClient
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -41,7 +41,7 @@ interface ChainConfig {
 }
 
 interface ContractAddresses {
-  appGateway?: Address;
+  appGateway: Address;
   arbForwarder?: Address;
   arbOnchain?: Address;
   opForwarder?: Address;
@@ -57,6 +57,7 @@ let opChain: ChainConfig;
 const EVMX_CHAIN_ID = 43;
 const ARB_SEP_CHAIN_ID = 421614;
 const OP_SEP_CHAIN_ID = 11155420;
+const EVMX_API_BASE_URL = "https://api-evmx-devnet.socket.tech"
 const DEPLOY_FEES_AMOUNT = parseEther('10'); // 10 ETH
 const TEST_USDC_AMOUNT = BigInt('100000000'); // 100 TEST USDC
 const GAS_BUFFER = BigInt('100000000'); // 0.1 Gwei
@@ -783,7 +784,7 @@ async function runSchedulerTests(appGateway: Address): Promise<void> {
   });
 
   // Decode and display event data
-  logs.forEach((log) => {
+  logs.forEach((log: any) => {
     if (log.data) {
       const dataHex = log.data.slice(2); // Remove 0x
       const index = BigInt('0x' + dataHex.slice(0, 64));
@@ -896,6 +897,110 @@ async function runInsufficientFeesTests(
   throw new Error(`No valid forwarder after ${maxAttempts * 5} seconds`);
 }
 
+// Revert tests
+async function runRevertTests(addresses: ContractAddresses): Promise<void> {
+  const interval = 1000; // 1 seconds
+  const maxAttempts = 60; // 60 seconds
+  const maxSeconds = interval * maxAttempts / 1000;
+  const endpoint = `${EVMX_API_BASE_URL}/getDetailsByTxHash`;
+
+  console.log(`${colors.CYAN}Testing onchain revert${colors.NC}`);
+
+  const abi = parseAbi([
+    'function testOnChainRevert(uint32) external',
+    'function testCallbackRevertWrongInputArgs(uint32) external'
+  ]);
+
+  // Send on-chain revert transaction
+  const hash1 = await sendTransaction(
+    addresses.appGateway,
+    'testOnChainRevert',
+    [OP_SEP_CHAIN_ID],
+    evmxChain,
+    abi
+  );
+
+  console.log(`${colors.CYAN}Waiting for transaction finalization${colors.NC}`);
+  let attempt = 0;
+  let status = '';
+
+  while (true) {
+    const response = await getTxDetails(endpoint, hash1);
+    status = response?.response?.[0]?.writePayloads?.[0]?.finalizeDetails?.finalizeStatus;
+
+    if (status === 'FINALIZED') {
+      if (attempt > 0) process.stdout.write('\r\x1b[2K');
+      break;
+    }
+
+    if (attempt >= maxAttempts) {
+      console.log();
+      throw new Error(`Transaction not finalized after ${maxSeconds} seconds. Current status: ${status}`);
+    }
+
+    const elapsed = attempt * interval / 1000;
+    process.stdout.write(`\r${colors.YELLOW}Waiting for finalization:${colors.NC} ${elapsed}s / ${maxSeconds}s`);
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+    attempt++;
+  }
+
+  const execStatus = (await getTxDetails(endpoint, hash1))?.response?.[0]?.writePayloads?.[0]?.executeDetails?.executeStatus;
+
+  if (execStatus === 'EXECUTION_FAILED') {
+    console.log(`Execution status is EXECUTION_FAILED as expected`);
+  } else {
+    throw new Error(`Execution status is not EXECUTION_FAILED, it is: ${execStatus}`);
+  }
+
+  // Send callback revert transaction
+  console.log(`${colors.CYAN}Testing callback revert${colors.NC}`);
+
+  const hash2 = await sendTransaction(
+    addresses.appGateway,
+    'testCallbackRevertWrongInputArgs',
+    [OP_SEP_CHAIN_ID],
+    evmxChain,
+    abi
+  );
+
+  console.log(`${colors.CYAN}Waiting for promise failed resolve${colors.NC}`);
+  attempt = 0;
+
+  while (true) {
+    const response = await getTxDetails(endpoint, hash2);
+    status = response?.response?.[0]?.readPayloads?.[0]?.callBackDetails?.callbackStatus;
+
+    if (status === 'PROMISE_RESOLVE_FAILED') {
+      if (attempt > 0) console.log();
+      break;
+    }
+
+    if (attempt >= maxAttempts) {
+      console.log();
+      throw new Error(`Promise did not fail to resolve after ${maxSeconds} seconds. Current status: ${status}`);
+    }
+
+    const elapsed = attempt * interval / 1000;
+    process.stdout.write(`\r${colors.YELLOW}Waiting for finalization:${colors.NC} ${elapsed}s / ${maxSeconds}s`);
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+    attempt++;
+  }
+
+  console.log(`Callback revert test completed successfully`);
+}
+
+// Fetch transaction status from the API
+async function getTxDetails(endpoint: string, txHash: string): Promise<any> {
+  try {
+    const res = await fetch(`${endpoint}?txHash=${txHash}`);
+    return await res.json();
+  } catch (error) {
+    console.error(`Failed to fetch tx status: ${error}`);
+    return {};
+  }
+}
 
 // Help function
 function showHelp(): void {
@@ -931,10 +1036,11 @@ async function main(): Promise<void> {
       upload: args.includes('-u') || args.includes('-a'),
       scheduler: args.includes('-s') || args.includes('-a'),
       insufficient: args.includes('-i') || args.includes('-a'),
+      revert: args.includes('-v') || args.includes('-a'),
       all: args.includes('-a')
     };
 
-    let addresses: ContractAddresses = {};
+    let addresses: ContractAddresses = { appGateway: '0x' };
 
     // Write Tests
     if (flags.write) {
@@ -1021,6 +1127,21 @@ async function main(): Promise<void> {
       await depositFunds(addresses.appGateway);
       await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
       await runInsufficientFeesTests('multichain', OP_SEP_CHAIN_ID, addresses.appGateway);
+      await withdrawFunds(addresses.appGateway);
+    }
+
+    // Revert Tests
+    if (flags.revert) {
+      console.log(`${colors.GREEN}=== Running Revert Tests ===${colors.NC}`);
+      addresses.appGateway = await deployAppGateway('RevertAppGateway');
+      await depositFunds(addresses.appGateway);
+      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+
+      const opAddresses = await fetchForwarderAndOnchainAddress('counter', OP_SEP_CHAIN_ID, addresses.appGateway);
+      addresses.opForwarder = opAddresses.forwarder;
+      addresses.opOnchain = opAddresses.onchain;
+
+      await runRevertTests(addresses);
       await withdrawFunds(addresses.appGateway);
     }
 
