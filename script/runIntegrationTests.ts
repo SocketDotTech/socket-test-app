@@ -730,6 +730,74 @@ async function runUploadTests(
   await awaitEvents(1, 'ReadOnchain(address,uint256)', appGateway);
 }
 
+// Scheduler tests
+async function runSchedulerTests(appGateway: Address): Promise<void> {
+  console.log(`${colors.CYAN}Reading timeouts from the contract:${colors.NC}`);
+  const abi = parseAbi([
+    'function timeoutsInSeconds(uint256) external view returns (uint256)',
+    'function triggerTimeouts() external'
+  ]);
+
+  let maxTimeout = 0;
+  let numberOfTimeouts = 0;
+
+  while (true) {
+    try {
+      const timeout = await evmxChain.client.readContract({
+        address: appGateway,
+        abi,
+        functionName: 'timeoutsInSeconds',
+        args: [numberOfTimeouts]
+      }) as number;
+
+      if (timeout === 0) break;
+
+      console.log(`Timeout ${numberOfTimeouts}: ${timeout} seconds`);
+      numberOfTimeouts++;
+
+      if (timeout > maxTimeout) {
+        maxTimeout = timeout;
+      }
+    } catch (error) {
+      break;
+    }
+  }
+
+  console.log(`${colors.CYAN}Triggering timeouts...${colors.NC}`);
+  await sendTransaction(
+    appGateway,
+    'triggerTimeouts',
+    [],
+    evmxChain,
+    abi
+  );
+
+  console.log(`${colors.CYAN}Fetching TimeoutResolved events...${colors.NC}`);
+
+  await awaitEvents(numberOfTimeouts, 'TimeoutResolved(uint256,uint256,uint256)', appGateway, Number(maxTimeout));
+  const logs = await evmxChain.client.getLogs({
+    address: appGateway,
+    event: parseAbi(['event TimeoutResolved(uint256,uint256,uint256)'])[0],
+    fromBlock: 'earliest',
+    toBlock: 'latest'
+  });
+
+  // Decode and display event data
+  logs.forEach((log) => {
+    if (log.data) {
+      const dataHex = log.data.slice(2); // Remove 0x
+      const index = BigInt('0x' + dataHex.slice(0, 64));
+      const creationTimestamp = BigInt('0x' + dataHex.slice(64, 128));
+      const executionTimestamp = BigInt('0x' + dataHex.slice(128, 192));
+
+      console.log(`${colors.GREEN}Timeout Resolved:${colors.NC}`);
+      console.log(`  Index: ${index}`);
+      console.log(`  Created at: ${creationTimestamp}`);
+      console.log(`  Executed at: ${executionTimestamp}`);
+    }
+  });
+}
+
 // Insufficient fees tests
 async function runInsufficientFeesTests(
   contractName: string,
@@ -934,6 +1002,15 @@ async function main(): Promise<void> {
       addresses.appGateway = await deployAppGateway('UploadAppGateway');
       await depositFunds(addresses.appGateway);
       await runUploadTests("Counter", addresses.appGateway);
+      await withdrawFunds(addresses.appGateway);
+    }
+
+    // Schedule EVMx events Tests
+    if (flags.scheduler) {
+      console.log(`${colors.GREEN}=== Running Scheduler Tests ===${colors.NC}`);
+      addresses.appGateway = await deployAppGateway('ScheduleAppGateway');
+      await depositFunds(addresses.appGateway);
+      await runSchedulerTests(addresses.appGateway);
       await withdrawFunds(addresses.appGateway);
     }
 
