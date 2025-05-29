@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "viem": "^2.30.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.23",
+    "tsx": "^4.19.4"
+  }
+}
