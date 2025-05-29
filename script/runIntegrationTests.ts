@@ -678,6 +678,58 @@ async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): P
   console.log(`${colors.GREEN}All trigger tests completed successfully!${colors.NC}`);
 }
 
+// Upload to EVMx tests
+async function runUploadTests(
+  fileName: string,
+  appGateway: Address
+): Promise<void> {
+  console.log(`${colors.CYAN}Deploying ${fileName} contract${colors.NC}`);
+
+  // Deploy counter contract on Arbitrum Sepolia
+  const counterAddress = await deployContract(fileName, [], arbChain);
+
+  // Increment counter on Arbitrum Sepolia
+  console.log(`${colors.CYAN}Increment counter on Arbitrum Sepolia${colors.NC}`);
+  const counterAbi = parseAbi([
+    'function increment() external'
+  ]);
+
+  await sendTransaction(
+    counterAddress,
+    'increment',
+    [],
+    arbChain,
+    counterAbi
+  );
+
+  // Upload counter to EVMx
+  console.log(`${colors.CYAN}Upload counter to EVMx${colors.NC}`);
+  const uploadAbi = parseAbi([
+    'function uploadToEVMx(address,uint32) external',
+    'function read() external'
+  ]);
+
+  await sendTransaction(
+    appGateway,
+    'uploadToEVMx',
+    [counterAddress, ARB_SEP_CHAIN_ID],
+    evmxChain,
+    uploadAbi
+  );
+
+  // Test read from Counter forwarder address
+  console.log(`${colors.CYAN}Test read from Counter forwarder address${colors.NC}`);
+  await sendTransaction(
+    appGateway,
+    'read',
+    [],
+    evmxChain,
+    uploadAbi
+  );
+
+  await awaitEvents(1, 'ReadOnchain(address,uint256)', appGateway);
+}
+
 // Help function
 function showHelp(): void {
   console.log('Usage: tsx evmx-test-script.ts [OPTIONS]');
@@ -773,6 +825,15 @@ async function main(): Promise<void> {
       addresses.opOnchain = opAddresses.onchain;
 
       await runTriggerAppGatewayOnchainTests(addresses);
+      await withdrawFunds(addresses.appGateway);
+    }
+
+    // Upload to EVMx Tests
+    if (flags.upload) {
+      console.log(`${colors.GREEN}=== Running Upload to EVMx Tests ===${colors.NC}`);
+      addresses.appGateway = await deployAppGateway('UploadAppGateway');
+      await depositFunds(addresses.appGateway);
+      await runUploadTests("Counter", addresses.appGateway);
       await withdrawFunds(addresses.appGateway);
     }
 
