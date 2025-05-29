@@ -460,13 +460,13 @@ async function awaitEvents(
   expectedNewEvents: number,
   _eventSignature: string,
   appGateway: Address,
-  timeout = 180
+  timeout: number = 180
 ): Promise<void> {
   console.log(`${colors.CYAN}Waiting logs for ${expectedNewEvents} new events (up to ${timeout} seconds)...${colors.NC}`);
 
-  const interval = 2000; // 2 seconds
-  let elapsed = 0;
-  let eventCount = 0;
+  const interval: number = 2000; // 2 seconds
+  let elapsed: number = 0;
+  let eventCount: number = 0;
 
   while (elapsed <= timeout * 1000) {
     try {
