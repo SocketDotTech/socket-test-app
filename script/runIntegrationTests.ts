@@ -579,6 +579,105 @@ async function runReadTests(addresses: ContractAddresses): Promise<void> {
   await awaitEvents(20, 'ValueRead(address,uint256,uint256)', addresses.appGateway);
 }
 
+// Trigger AppGateway from onchain tests
+async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): Promise<void> {
+  console.log(`${colors.CYAN}Running all trigger the AppGateway from onchain tests functions...${colors.NC}`);
+
+  if (!addresses.appGateway || !addresses.arbOnchain || !addresses.opOnchain) {
+    throw new Error('Required addresses not found');
+  }
+
+  const valueIncrease = BigInt(5);
+
+  // 1. Increase on AppGateway from Arbitrum Sepolia
+  console.log(`${colors.CYAN}Increase on AppGateway from Arbitrum Sepolia${colors.NC}`);
+
+  const onchainAbi = parseAbi([
+    'function increaseOnGateway(uint256) external'
+  ]);
+
+  await sendTransaction(
+    addresses.arbOnchain,
+    'increaseOnGateway',
+    [valueIncrease],
+    arbChain,
+    onchainAbi
+  );
+
+  // Wait and verify value on AppGateway
+  await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
+
+  const appGatewayAbi = parseAbi([
+    'function valueOnGateway() external view returns (uint256)',
+    'function updateOnchain(uint32) external'
+  ]);
+
+  const valueOnGateway = await evmxChain.client.readContract({
+    address: addresses.appGateway,
+    abi: appGatewayAbi,
+    functionName: 'valueOnGateway'
+  }) as bigint;
+
+  if (valueOnGateway < valueIncrease) {
+    throw new Error(`Got ${valueOnGateway} but expected at least ${valueIncrease}`);
+  }
+
+  // 2. Update on Optimism Sepolia from AppGateway
+  console.log(`${colors.CYAN}Update on Optimism Sepolia from AppGateway${colors.NC}`);
+
+  await sendTransaction(
+    addresses.appGateway,
+    'updateOnchain',
+    [OP_SEP_CHAIN_ID],
+    evmxChain,
+    appGatewayAbi
+  );
+
+  // Wait and verify value on Optimism
+  await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
+
+  const onchainReadAbi = parseAbi([
+    'function value() external view returns (uint256)',
+    'function propagateToAnother(uint32) external'
+  ]);
+
+  const valueOnOp = await opChain.client.readContract({
+    address: addresses.opOnchain,
+    abi: onchainReadAbi,
+    functionName: 'value'
+  }) as bigint;
+
+  if (valueOnOp !== valueOnGateway) {
+    throw new Error(`Got ${valueOnOp} but expected ${valueOnGateway}`);
+  }
+
+  // 3. Propagate update from Optimism Sepolia to Arbitrum Sepolia
+  console.log(`${colors.CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${colors.NC}`);
+
+  await sendTransaction(
+    addresses.opOnchain,
+    'propagateToAnother',
+    [ARB_SEP_CHAIN_ID],
+    opChain,
+    onchainReadAbi
+  );
+
+  // Wait and verify value on Arbitrum
+  await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
+
+  const valueOnArb = await arbChain.client.readContract({
+    address: addresses.arbOnchain,
+    abi: onchainReadAbi,
+    functionName: 'value'
+  }) as bigint;
+
+  if (valueOnArb !== valueOnOp) {
+    throw new Error(`Got ${valueOnArb} but expected ${valueOnOp}`);
+  }
+
+  console.log(`${colors.GREEN}All trigger tests completed successfully!${colors.NC}`);
+}
+
 // Help function
 function showHelp(): void {
   console.log('Usage: tsx evmx-test-script.ts [OPTIONS]');
@@ -654,6 +753,26 @@ async function main(): Promise<void> {
       addresses.opOnchain = opAddresses.onchain;
 
       await runReadTests(addresses);
+      await withdrawFunds(addresses.appGateway);
+    }
+
+    // Trigger from onchain Tests
+    if (flags.trigger) {
+      console.log(`${colors.GREEN}=== Running Trigger from onchain Tests ===${colors.NC}`);
+      addresses.appGateway = await deployAppGateway('OnchainTriggerAppGateway');
+      await depositFunds(addresses.appGateway);
+      await deployOnchain(ARB_SEP_CHAIN_ID, addresses.appGateway);
+      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+
+      const arbAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', ARB_SEP_CHAIN_ID, addresses.appGateway);
+      addresses.arbForwarder = arbAddresses.forwarder;
+      addresses.arbOnchain = arbAddresses.onchain;
+
+      const opAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', OP_SEP_CHAIN_ID, addresses.appGateway);
+      addresses.opForwarder = opAddresses.forwarder;
+      addresses.opOnchain = opAddresses.onchain;
+
+      await runTriggerAppGatewayOnchainTests(addresses);
       await withdrawFunds(addresses.appGateway);
     }
 
