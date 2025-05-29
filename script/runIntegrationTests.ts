@@ -730,6 +730,105 @@ async function runUploadTests(
   await awaitEvents(1, 'ReadOnchain(address,uint256)', appGateway);
 }
 
+// Insufficient fees tests
+async function runInsufficientFeesTests(
+  contractName: string,
+  chainId: number,
+  appGateway: Address
+): Promise<Address> {
+  console.log(`${colors.CYAN}Testing fees for '${contractName}' on chain ${chainId}${colors.NC}`);
+
+  // Get contract ID
+  const contractAbi = parseAbi([
+    `function ${contractName}() external view returns (bytes32)`,
+    'function forwarderAddresses(bytes32, uint32) external view returns (address)',
+    'function increaseFees(uint40, uint256) external'
+  ]);
+
+  const contractId = await evmxChain.client.readContract({
+    address: appGateway,
+    abi: contractAbi,
+    functionName: contractName
+  }) as Hash;
+
+  // Wait for forwarder address (should fail initially)
+  let attempts = 0;
+  const maxAttempts = 15;
+  let forwarder: Address = '0x0000000000000000000000000000000000000000';
+
+  while (attempts < maxAttempts) {
+    try {
+      forwarder = await evmxChain.client.readContract({
+        address: appGateway,
+        abi: contractAbi,
+        functionName: 'forwarderAddresses',
+        args: [contractId, chainId]
+      }) as Address;
+
+      if (forwarder !== '0x0000000000000000000000000000000000000000') {
+        console.log(forwarder);
+        return forwarder;
+      }
+    } catch (error) {
+      // Continue waiting
+    }
+
+    const percent = Math.floor((attempts * 100) / maxAttempts);
+    process.stdout.write(`\r${colors.YELLOW}Waiting for forwarder:${colors.NC} ${percent}%`);
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    attempts++;
+  }
+
+  process.stdout.write('\n');
+  console.log(`No valid forwarder after ${maxAttempts} seconds`);
+
+  // Get the last transaction hash from the deployment and parse request count
+  // This would need to be passed from the deployment function
+  // For now, we'll use a placeholder
+  const requestCount = BigInt(1); // This should be parsed from the actual deployment transaction
+
+  // Set fees
+  await sendTransaction(
+    appGateway,
+    'increaseFees',
+    [requestCount, DEPLOY_FEES_AMOUNT],
+    evmxChain,
+    contractAbi
+  );
+
+  // Verify forwarder after fees
+  attempts = 0;
+  while (attempts < maxAttempts) {
+    try {
+      forwarder = await evmxChain.client.readContract({
+        address: appGateway,
+        abi: contractAbi,
+        functionName: 'forwarderAddresses',
+        args: [contractId, chainId]
+      }) as Address;
+
+      if (forwarder !== '0x0000000000000000000000000000000000000000') {
+        console.log(`${colors.GREEN}Chain ${chainId}${colors.NC}`);
+        console.log(`Forwarder: ${forwarder}`);
+        return forwarder;
+      }
+    } catch (error) {
+      // Continue waiting
+    }
+
+    const percent = Math.floor((attempts * 100) / maxAttempts);
+    process.stdout.write(`\r${colors.YELLOW}Waiting for forwarder:${colors.NC} ${percent}%`);
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    attempts++;
+  }
+
+  process.stdout.write('\n');
+  throw new Error(`No valid forwarder after ${maxAttempts * 5} seconds`);
+}
+
+
 // Help function
 function showHelp(): void {
   console.log('Usage: tsx evmx-test-script.ts [OPTIONS]');
@@ -763,6 +862,7 @@ async function main(): Promise<void> {
       trigger: args.includes('-t') || args.includes('-a'),
       upload: args.includes('-u') || args.includes('-a'),
       scheduler: args.includes('-s') || args.includes('-a'),
+      insufficient: args.includes('-i') || args.includes('-a'),
       all: args.includes('-a')
     };
 
@@ -834,6 +934,16 @@ async function main(): Promise<void> {
       addresses.appGateway = await deployAppGateway('UploadAppGateway');
       await depositFunds(addresses.appGateway);
       await runUploadTests("Counter", addresses.appGateway);
+      await withdrawFunds(addresses.appGateway);
+    }
+
+    // Insufficient Fees Tests
+    if (flags.insufficient) {
+      console.log(`${colors.GREEN}=== Running Insufficient fees Tests ===${colors.NC}`);
+      addresses.appGateway = await deployAppGateway('ReadAppGateway', 0n);
+      await depositFunds(addresses.appGateway);
+      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+      await runInsufficientFeesTests('multichain', OP_SEP_CHAIN_ID, addresses.appGateway);
       await withdrawFunds(addresses.appGateway);
     }
 
