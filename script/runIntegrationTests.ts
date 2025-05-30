@@ -1,509 +1,31 @@
-#!/usr/bin/env tsx
-
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  parseEther,
-  parseAbi,
-  type Abi,
-  type Hash,
-  type Address,
-  //type PublicClient,
-  type WalletClient
-} from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { arbitrumSepolia, optimismSepolia } from 'viem/chains';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
-// ANSI color codes
-const colors = {
-  YELLOW: '\x1b[1;33m',
-  GREEN: '\x1b[0;32m',
-  CYAN: '\x1b[0;36m',
-  RED: '\x1b[0;31m',
-  NC: '\x1b[0m' // No Color
-};
-
-// Types
-interface ChainConfig {
-  client: any; //PublicClient; Does not work for OP Sepolia. There are different tx types apparently
-  walletClient: WalletClient;
-  chainId: number;
-  explorerUrl: string;
-}
-
-interface ContractAddresses {
-  appGateway: Address;
-  arbForwarder?: Address;
-  arbOnchain?: Address;
-  opForwarder?: Address;
-  opOnchain?: Address;
-}
+// tests.ts - Main test orchestrator
+import { parseAbi, type Address, type Hash } from 'viem';
+import { setupClients } from './utils/client-setup.js';
+import { buildContracts, deployContract, deployAppGateway, deployOnchain, sendTransaction } from './utils/deployer.js';
+import { depositFunds, withdrawFunds } from './utils/fees-manager.js';
+import { awaitEvents, fetchForwarderAndOnchainAddress, getTxDetails } from './utils/helpers.js';
+import { ContractAddresses, TestFlags, ChainConfig } from './utils/types.js';
+import { COLORS, CHAIN_IDS, URLS, AMOUNTS } from './utils/constants.js';
 
 // Global chain configurations
 let evmxChain: ChainConfig;
 let arbChain: ChainConfig;
 let opChain: ChainConfig;
 
-// Constants
-const EVMX_CHAIN_ID = 43;
-const ARB_SEP_CHAIN_ID = 421614;
-const OP_SEP_CHAIN_ID = 11155420;
-const EVMX_API_BASE_URL = "https://api-evmx-devnet.socket.tech"
-const DEPLOY_FEES_AMOUNT = parseEther('10'); // 10 ETH
-const TEST_USDC_AMOUNT = BigInt('100000000'); // 100 TEST USDC
-const GAS_BUFFER = BigInt('100000000'); // 0.1 Gwei
-const GAS_LIMIT = BigInt('50000000000'); // Gas limit estimate
-
-// Environment validation
-function validateEnvironment() {
-  const required = ['EVMX_RPC', 'PRIVATE_KEY', 'ADDRESS_RESOLVER', 'FEES_MANAGER', 'ARBITRUM_SEPOLIA_RPC', 'OPTIMISM_SEPOLIA_RPC'];
-  for (const env of required) {
-    if (!process.env[env]) {
-      throw new Error(`${env} environment variable is required`);
-    }
-  }
-}
-
-// Setup clients
-function setupClients(): void {
-  validateEnvironment();
-
-  const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hash);
-
-  const evmxClient = createPublicClient({
-    transport: http(process.env.EVMX_RPC)
-  });
-
-  const evmxWallet = createWalletClient({
-    account,
-    transport: http(process.env.EVMX_RPC)
-  });
-
-  const arbClient = createPublicClient({
-    chain: arbitrumSepolia,
-    transport: http(process.env.ARBITRUM_SEPOLIA_RPC)
-  });
-
-  const arbWallet = createWalletClient({
-    account,
-    chain: arbitrumSepolia,
-    transport: http(process.env.ARBITRUM_SEPOLIA_RPC)
-  });
-
-  const opClient = createPublicClient({
-    chain: optimismSepolia,
-    transport: http(process.env.OPTIMISM_SEPOLIA_RPC)
-  });
-
-  const opWallet = createWalletClient({
-    account,
-    chain: optimismSepolia,
-    transport: http(process.env.OPTIMISM_SEPOLIA_RPC)
-  });
-
-  // Set global chain configurations
-  evmxChain = {
-    client: evmxClient,
-    walletClient: evmxWallet,
-    chainId: EVMX_CHAIN_ID,
-    explorerUrl: 'evmx.cloud.blockscout.com'
-  };
-
-  arbChain = {
-    client: arbClient,
-    walletClient: arbWallet,
-    chainId: ARB_SEP_CHAIN_ID,
-    explorerUrl: 'arbitrum-sepolia.blockscout.com'
-  };
-
-  opChain = {
-    client: opClient,
-    walletClient: opWallet,
-    chainId: OP_SEP_CHAIN_ID,
-    explorerUrl: 'optimism-sepolia.blockscout.com'
-  };
-}
-
-// Build contracts using forge
-async function buildContracts(): Promise<void> {
-  console.log(`${colors.CYAN}Building contracts${colors.NC}`);
-  const execAsync = promisify(exec);
-
-  try {
-    await execAsync('forge build');
-    console.log('Contracts built successfully');
-  } catch (error) {
-    console.error(`${colors.RED}Error:${colors.NC} forge build failed. Check your contract code.`);
-    throw error;
-  }
-}
-
-// Deploy contract function
-async function deployContract(
-  contractName: string,
-  constructorArgs: any[] = [],
-  chainConfig: ChainConfig = evmxChain
-): Promise<Address> {
-  console.log(`${colors.CYAN}Deploying ${contractName} contract${colors.NC}`);
-
-  try {
-    // Read the compiled contract
-    const artifactPath = path.join('out', `${contractName}.sol`, `${contractName}.json`);
-    const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
-
-    const abi = artifact.abi;
-    const bytecode = artifact.bytecode.object;
-
-    // Deploy the contract
-    const hash = await chainConfig.walletClient.deployContract({
-      abi,
-      bytecode,
-      args: constructorArgs,
-      account: chainConfig.walletClient.account!,
-      chain: chainConfig.walletClient.chain,
-      gasPrice: chainConfig.chainId === EVMX_CHAIN_ID ? 0n : undefined
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log(`${colors.GREEN}Tx Hash:${colors.NC} ${getExplorerUrl(hash, chainConfig)}`);
-
-    // Get the deployed address
-    const receipt = await chainConfig.client.getTransactionReceipt({ hash });
-
-    if (!receipt.contractAddress) {
-      throw new Error('Failed to get contract address from deployment');
-    }
-
-    const address = receipt.contractAddress;
-    console.log(`${colors.GREEN}Contract deployed:${colors.NC} ${getExplorerAddressUrl(address, chainConfig)}`);
-
-    return address;
-  } catch (error) {
-    console.error(`${colors.RED}Error:${colors.NC} Contract deployment failed.`);
-    throw error;
-  }
-}
-
-// Get explorer URL helper
-function getExplorerUrl(hash: Hash, chainConfig: ChainConfig): string {
-  return `https://${chainConfig.explorerUrl}/tx/${hash}`;
-}
-
-function getExplorerAddressUrl(address: Address, chainConfig: ChainConfig): string {
-  return `https://${chainConfig.explorerUrl}/address/${address}`;
-}
-
-// Send transaction with consistent error handling
-async function sendTransaction(
-  to: Address,
-  functionName: string,
-  args: any[] = [],
-  chainConfig: ChainConfig,
-  abi: Abi
-): Promise<Hash> {
-  console.log(`${colors.CYAN}Sending transaction to ${functionName} on ${to}${colors.NC}`);
-
-  try {
-    const hash = await chainConfig.walletClient.writeContract({
-      address: to,
-      abi,
-      functionName,
-      args,
-      account: chainConfig.walletClient.account!,
-      chain: chainConfig.walletClient.chain,
-      gasPrice: chainConfig.chainId === EVMX_CHAIN_ID ? 0n : undefined
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log(`${colors.GREEN}Tx Hash:${colors.NC} ${getExplorerUrl(hash, chainConfig)}`);
-
-    return hash;
-  } catch (error) {
-    console.error(`${colors.RED}Error:${colors.NC} Transaction failed.`);
-    throw error;
-  }
-}
-
-// Deploy AppGateway
-async function deployAppGateway(
-  filename: string,
-  deployFees = DEPLOY_FEES_AMOUNT
-): Promise<Address> {
-  return deployContract(
-    filename,
-    [process.env.ADDRESS_RESOLVER, deployFees],
-    evmxChain
-  );
-}
-
-// Deploy onchain contracts
-async function deployOnchain(chainId: number, appGateway: Address): Promise<void> {
-  console.log(`${colors.CYAN}Deploying onchain contracts for chain id: ${chainId}${colors.NC}`);
-
-  const abi = parseAbi([
-    'function deployContracts(uint32 chainId) external'
-  ]);
-
-  await sendTransaction(
-    appGateway,
-    'deployContracts',
-    [chainId],
-    evmxChain,
-    abi
-  );
-}
-
-// Fetch forwarder and onchain addresses
-async function fetchForwarderAndOnchainAddress(
-  contractName: string,
-  chainId: number,
-  appGateway: Address
-): Promise<{ forwarder: Address; onchain: Address }> {
-  console.log(`${colors.CYAN}Fetching forwarder address for contract '${contractName}' on chain ID ${chainId}${colors.NC}`);
-
-  const contractAbi = parseAbi([
-    `function ${contractName}() external view returns (bytes32)`,
-    'function forwarderAddresses(bytes32, uint32) external view returns (address)',
-    'function getOnChainAddress(bytes32, uint32) external view returns (address)'
-  ]);
-
-  // Get contract ID
-  const contractId = await evmxChain.client.readContract({
-    address: appGateway,
-    abi: contractAbi,
-    functionName: contractName
-  }) as Hash;
-
-  // Wait for forwarder address with progress bar
-  let attempts = 0;
-  const maxAttempts = 30;
-  let forwarder: Address = '0x0000000000000000000000000000000000000000';
-
-  while (attempts < maxAttempts) {
-    forwarder = await evmxChain.client.readContract({
-      address: appGateway,
-      abi: contractAbi,
-      functionName: 'forwarderAddresses',
-      args: [contractId, chainId]
-    }) as Address;
-
-    if (forwarder !== '0x0000000000000000000000000000000000000000') {
-      if (attempts > 0) process.stdout.write('\r\x1b[2K');
-      break;
-    }
-
-    // Progress bar logic here (simplified)
-    const percent = Math.floor((attempts * 100) / maxAttempts);
-    process.stdout.write(`\r${colors.YELLOW}Waiting for forwarder:${colors.NC} ${percent}%`);
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    attempts++;
-  }
-
-  if (forwarder === '0x0000000000000000000000000000000000000000') {
-    throw new Error(`Forwarder address is still zero after ${maxAttempts} seconds for chain ${chainId}`);
-  }
-
-  // Get onchain address
-  const onchain = await evmxChain.client.readContract({
-    address: appGateway,
-    abi: contractAbi,
-    functionName: 'getOnChainAddress',
-    args: [contractId, chainId]
-  }) as Address;
-
-  if (onchain === '0x0000000000000000000000000000000000000000') {
-    throw new Error(`Onchain address is zero for chain ${chainId}`);
-  }
-
-  console.log(`${colors.GREEN}Chain ${chainId}${colors.NC}`);
-  console.log(`Forwarder: ${forwarder}`);
-  console.log(`Onchain:   ${onchain}`);
-
-  return { forwarder, onchain };
-}
-
-// Check available fees
-async function checkAvailableFees(appGateway: Address): Promise<bigint> {
-  const maxAttempts = 60;
-  let attempt = 0;
-  let availableFees = 0n;
-
-  const abi = parseAbi([
-    'function getAvailableCredits(address) external view returns (uint256)'
-  ]);
-
-  while (attempt < maxAttempts) {
-    try {
-      availableFees = await evmxChain.client.readContract({
-        address: process.env.FEES_MANAGER as Address,
-        abi,
-        functionName: 'getAvailableCredits',
-        args: [appGateway]
-      }) as bigint;
-
-      if (availableFees > 0n) {
-        console.log(`Funds available: ${availableFees} wei`);
-        return availableFees;
-      }
-    } catch (error) {
-      console.error(`${colors.RED}Error:${colors.NC} Failed to retrieve available fees.`);
-      throw error;
-    }
-
-    // Progress bar logic
-    const percent = Math.floor((attempt * 100) / maxAttempts);
-    process.stdout.write(`\r${colors.YELLOW}Checking fees:${colors.NC} ${percent}%`);
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    attempt++;
-  }
-
-  throw new Error('No funds available after 60 seconds.');
-}
-
-// Deposit funds
-async function depositFunds(appGateway: Address): Promise<void> {
-  console.log(`${colors.CYAN}Depositing funds${colors.NC}`);
-
-  const erc20Abi = parseAbi([
-    'function mint(address to, uint256 amount) external',
-    'function approve(address spender, uint256 amount) external returns (bool)'
-  ]);
-
-  const feesPlugAbi = parseAbi([
-    'function depositToFeeAndNative(address token, address appGateway, uint256 amount) external'
-  ]);
-
-  const walletAddress = arbChain.walletClient.account?.address;
-  if (!walletAddress) throw new Error('Wallet address not found');
-
-  // Mint test USDC
-  await sendTransaction(
-    process.env.ARBITRUM_TEST_USDC as Address,
-    'mint',
-    [walletAddress, TEST_USDC_AMOUNT],
-    arbChain,
-    erc20Abi
-  );
-
-  // Approve USDC for FeesPlug
-  await sendTransaction(
-    process.env.ARBITRUM_TEST_USDC as Address,
-    'approve',
-    [process.env.ARBITRUM_FEES_PLUG as Address, TEST_USDC_AMOUNT],
-    arbChain,
-    erc20Abi
-  );
-
-  // Deposit funds
-  await sendTransaction(
-    process.env.ARBITRUM_FEES_PLUG as Address,
-    'depositToFeeAndNative',
-    [process.env.ARBITRUM_TEST_USDC as Address, appGateway, TEST_USDC_AMOUNT],
-    arbChain,
-    feesPlugAbi
-  );
-
-  await checkAvailableFees(appGateway);
-}
-
-// Withdraw funds
-async function withdrawFunds(appGateway: Address): Promise<void> {
-  console.log(`${colors.CYAN}Withdrawing funds${colors.NC}`);
-
-  const availableFees = await checkAvailableFees(appGateway);
-
-  if (availableFees === 0n) {
-    console.log('No available fees to withdraw.');
-    return;
-  }
-
-  // Get gas price and calculate withdrawal amount
-  const gasPrice = await arbChain.client.getGasPrice();
-  const estimatedGasCost = GAS_LIMIT * (gasPrice + GAS_BUFFER);
-
-  let amountToWithdraw = 0n;
-  if (availableFees > estimatedGasCost) {
-    amountToWithdraw = availableFees - estimatedGasCost;
-  }
-
-  console.log(`Withdrawing ${amountToWithdraw} wei`);
-
-  if (amountToWithdraw > 0n) {
-    const abi = parseAbi([
-      'function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address to) external'
-    ]);
-
-    await sendTransaction(
-      appGateway,
-      'withdrawFeeTokens',
-      [ARB_SEP_CHAIN_ID, process.env.ARBITRUM_TEST_USDC, amountToWithdraw, arbChain.walletClient.account?.address],
-      evmxChain,
-      abi
-    );
-  } else {
-    console.log('No funds available for withdrawal after gas cost estimation.');
-  }
-}
-
-// Await events function
-async function awaitEvents(
-  expectedNewEvents: number,
-  _eventSignature: string,
-  appGateway: Address,
-  timeout: number = 180
-): Promise<void> {
-  console.log(`${colors.CYAN}Waiting logs for ${expectedNewEvents} new events (up to ${timeout} seconds)...${colors.NC}`);
-
-  const interval: number = 2000; // 2 seconds
-  let elapsed: number = 0;
-  let eventCount: number = 0;
-
-  while (elapsed <= timeout * 1000) {
-    try {
-      const logs = await evmxChain.client.getLogs({
-        address: appGateway,
-        fromBlock: 'earliest',
-        toBlock: 'latest'
-      });
-
-      eventCount = logs.length;
-
-      if (eventCount >= expectedNewEvents) {
-        process.stdout.write(`\r`);
-        console.log(`\nTotal events on EVMx: ${eventCount} reached (expected ${expectedNewEvents})`);
-        break;
-      }
-
-      process.stdout.write(`\rWaiting for ${expectedNewEvents} logs on EVMx: ${eventCount}/${expectedNewEvents} (Elapsed: ${elapsed / 1000}/${timeout} sec)`);
-
-      await new Promise(resolve => setTimeout(resolve, interval));
-      elapsed += interval;
-    } catch (error) {
-      console.error('Error fetching logs:', error);
-      await new Promise(resolve => setTimeout(resolve, interval));
-      elapsed += interval;
-    }
-  }
-
-  if (eventCount < expectedNewEvents) {
-    throw new Error(`\nTimed out after ${timeout} seconds. Expected ${expectedNewEvents} logs, found ${eventCount}.`);
-  }
+// Initialize chains
+function initializeChains(): void {
+  const chains = setupClients();
+  evmxChain = chains.evmxChain;
+  arbChain = chains.arbChain;
+  opChain = chains.opChain;
 }
 
 // Write tests
-async function runWriteTests(addresses: ContractAddresses): Promise<void> {
-  console.log(`${colors.CYAN}Running all write tests functions...${colors.NC}`);
+async function runWriteTests(
+  addresses: ContractAddresses,
+  evmxChain: ChainConfig
+): Promise<void> {
+  console.log(`${COLORS.CYAN}Running all write tests functions...${COLORS.NC}`);
 
   const abi = parseAbi([
     'function triggerSequentialWrite(address forwarder) external',
@@ -523,7 +45,7 @@ async function runWriteTests(addresses: ContractAddresses): Promise<void> {
     evmxChain,
     abi
   );
-  await awaitEvents(10, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway);
+  await awaitEvents(10, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
 
   // 2. Trigger Parallel Write
   await sendTransaction(
@@ -533,7 +55,7 @@ async function runWriteTests(addresses: ContractAddresses): Promise<void> {
     evmxChain,
     abi
   );
-  await awaitEvents(20, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway);
+  await awaitEvents(20, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
 
   // 3. Trigger Alternating Write
   await sendTransaction(
@@ -543,12 +65,15 @@ async function runWriteTests(addresses: ContractAddresses): Promise<void> {
     evmxChain,
     abi
   );
-  await awaitEvents(30, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway);
+  await awaitEvents(30, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
 }
 
 // Read tests
-async function runReadTests(addresses: ContractAddresses): Promise<void> {
-  console.log(`${colors.CYAN}Running all read tests functions...${colors.NC}`);
+export async function runReadTests(
+  addresses: ContractAddresses,
+  evmxChain: ChainConfig
+): Promise<void> {
+  console.log(`${COLORS.CYAN}Running all read tests functions...${COLORS.NC}`);
 
   const abi = parseAbi([
     'function triggerParallelRead(address forwarder) external',
@@ -567,7 +92,7 @@ async function runReadTests(addresses: ContractAddresses): Promise<void> {
     evmxChain,
     abi
   );
-  await awaitEvents(10, 'ValueRead(address,uint256,uint256)', addresses.appGateway);
+  await awaitEvents(10, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
 
   // 2. Trigger Alternating Read
   await sendTransaction(
@@ -577,12 +102,12 @@ async function runReadTests(addresses: ContractAddresses): Promise<void> {
     evmxChain,
     abi
   );
-  await awaitEvents(20, 'ValueRead(address,uint256,uint256)', addresses.appGateway);
+  await awaitEvents(20, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
 }
 
 // Trigger AppGateway from onchain tests
 async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): Promise<void> {
-  console.log(`${colors.CYAN}Running all trigger the AppGateway from onchain tests functions...${colors.NC}`);
+  console.log(`${COLORS.CYAN}Running all trigger the AppGateway from onchain tests functions...${COLORS.NC}`);
 
   if (!addresses.appGateway || !addresses.arbOnchain || !addresses.opOnchain) {
     throw new Error('Required addresses not found');
@@ -591,7 +116,7 @@ async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): P
   const valueIncrease = BigInt(5);
 
   // 1. Increase on AppGateway from Arbitrum Sepolia
-  console.log(`${colors.CYAN}Increase on AppGateway from Arbitrum Sepolia${colors.NC}`);
+  console.log(`${COLORS.CYAN}Increase on AppGateway from Arbitrum Sepolia${COLORS.NC}`);
 
   const onchainAbi = parseAbi([
     'function increaseOnGateway(uint256) external'
@@ -624,12 +149,12 @@ async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): P
   }
 
   // 2. Update on Optimism Sepolia from AppGateway
-  console.log(`${colors.CYAN}Update on Optimism Sepolia from AppGateway${colors.NC}`);
+  console.log(`${COLORS.CYAN}Update on Optimism Sepolia from AppGateway${COLORS.NC}`);
 
   await sendTransaction(
     addresses.appGateway,
     'updateOnchain',
-    [OP_SEP_CHAIN_ID],
+    [CHAIN_IDS.OP_SEP],
     evmxChain,
     appGatewayAbi
   );
@@ -653,12 +178,12 @@ async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): P
   }
 
   // 3. Propagate update from Optimism Sepolia to Arbitrum Sepolia
-  console.log(`${colors.CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${colors.NC}`);
+  console.log(`${COLORS.CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${COLORS.NC}`);
 
   await sendTransaction(
     addresses.opOnchain,
     'propagateToAnother',
-    [ARB_SEP_CHAIN_ID],
+    [CHAIN_IDS.ARB_SEP],
     opChain,
     onchainReadAbi
   );
@@ -676,7 +201,7 @@ async function runTriggerAppGatewayOnchainTests(addresses: ContractAddresses): P
     throw new Error(`Got ${valueOnArb} but expected ${valueOnOp}`);
   }
 
-  console.log(`${colors.GREEN}All trigger tests completed successfully!${colors.NC}`);
+  console.log(`${COLORS.GREEN}All trigger tests completed successfully!${COLORS.NC}`);
 }
 
 // Upload to EVMx tests
@@ -684,13 +209,11 @@ async function runUploadTests(
   fileName: string,
   appGateway: Address
 ): Promise<void> {
-  console.log(`${colors.CYAN}Deploying ${fileName} contract${colors.NC}`);
-
   // Deploy counter contract on Arbitrum Sepolia
   const counterAddress = await deployContract(fileName, [], arbChain);
 
   // Increment counter on Arbitrum Sepolia
-  console.log(`${colors.CYAN}Increment counter on Arbitrum Sepolia${colors.NC}`);
+  console.log(`${COLORS.CYAN}Increment counter on Arbitrum Sepolia${COLORS.NC}`);
   const counterAbi = parseAbi([
     'function increment() external'
   ]);
@@ -704,7 +227,7 @@ async function runUploadTests(
   );
 
   // Upload counter to EVMx
-  console.log(`${colors.CYAN}Upload counter to EVMx${colors.NC}`);
+  console.log(`${COLORS.CYAN}Upload counter to EVMx${COLORS.NC}`);
   const uploadAbi = parseAbi([
     'function uploadToEVMx(address,uint32) external',
     'function read() external'
@@ -713,13 +236,13 @@ async function runUploadTests(
   await sendTransaction(
     appGateway,
     'uploadToEVMx',
-    [counterAddress, ARB_SEP_CHAIN_ID],
+    [counterAddress, CHAIN_IDS.ARB_SEP],
     evmxChain,
     uploadAbi
   );
 
   // Test read from Counter forwarder address
-  console.log(`${colors.CYAN}Test read from Counter forwarder address${colors.NC}`);
+  console.log(`${COLORS.CYAN}Test read from Counter forwarder address${COLORS.NC}`);
   await sendTransaction(
     appGateway,
     'read',
@@ -728,12 +251,13 @@ async function runUploadTests(
     uploadAbi
   );
 
-  await awaitEvents(1, 'ReadOnchain(address,uint256)', appGateway);
+  const { awaitEvents } = await import('./utils/helpers.js');
+  await awaitEvents(1, 'ReadOnchain(address,uint256)', appGateway, evmxChain);
 }
 
 // Scheduler tests
 async function runSchedulerTests(appGateway: Address): Promise<void> {
-  console.log(`${colors.CYAN}Reading timeouts from the contract:${colors.NC}`);
+  console.log(`${COLORS.CYAN}Reading timeouts from the contract:${COLORS.NC}`);
   const abi = parseAbi([
     'function timeoutsInSeconds(uint256) external view returns (uint256)',
     'function triggerTimeouts() external'
@@ -764,7 +288,7 @@ async function runSchedulerTests(appGateway: Address): Promise<void> {
     }
   }
 
-  console.log(`${colors.CYAN}Triggering timeouts...${colors.NC}`);
+  console.log(`${COLORS.CYAN}Triggering timeouts...${COLORS.NC}`);
   await sendTransaction(
     appGateway,
     'triggerTimeouts',
@@ -773,9 +297,11 @@ async function runSchedulerTests(appGateway: Address): Promise<void> {
     abi
   );
 
-  console.log(`${colors.CYAN}Fetching TimeoutResolved events...${colors.NC}`);
+  console.log(`${COLORS.CYAN}Fetching TimeoutResolved events...${COLORS.NC}`);
 
-  await awaitEvents(numberOfTimeouts, 'TimeoutResolved(uint256,uint256,uint256)', appGateway, Number(maxTimeout));
+  const { awaitEvents } = await import('./utils/helpers.js');
+  await awaitEvents(numberOfTimeouts, 'TimeoutResolved(uint256,uint256,uint256)', appGateway, evmxChain, Number(maxTimeout));
+
   const logs = await evmxChain.client.getLogs({
     address: appGateway,
     event: parseAbi(['event TimeoutResolved(uint256,uint256,uint256)'])[0],
@@ -791,7 +317,7 @@ async function runSchedulerTests(appGateway: Address): Promise<void> {
       const creationTimestamp = BigInt('0x' + dataHex.slice(64, 128));
       const executionTimestamp = BigInt('0x' + dataHex.slice(128, 192));
 
-      console.log(`${colors.GREEN}Timeout Resolved:${colors.NC}`);
+      console.log(`${COLORS.GREEN}Timeout Resolved:${COLORS.NC}`);
       console.log(`  Index: ${index}`);
       console.log(`  Created at: ${creationTimestamp}`);
       console.log(`  Executed at: ${executionTimestamp}`);
@@ -805,7 +331,7 @@ async function runInsufficientFeesTests(
   chainId: number,
   appGateway: Address
 ): Promise<Address> {
-  console.log(`${colors.CYAN}Testing fees for '${contractName}' on chain ${chainId}${colors.NC}`);
+  console.log(`${COLORS.CYAN}Testing fees for '${contractName}' on chain ${chainId}${COLORS.NC}`);
 
   // Get contract ID
   const contractAbi = parseAbi([
@@ -843,7 +369,7 @@ async function runInsufficientFeesTests(
     }
 
     const percent = Math.floor((attempts * 100) / maxAttempts);
-    process.stdout.write(`\r${colors.YELLOW}Waiting for forwarder:${colors.NC} ${percent}%`);
+    process.stdout.write(`\r${COLORS.YELLOW}Waiting for forwarder:${COLORS.NC} ${percent}%`);
 
     await new Promise(resolve => setTimeout(resolve, 1000));
     attempts++;
@@ -861,7 +387,7 @@ async function runInsufficientFeesTests(
   await sendTransaction(
     appGateway,
     'increaseFees',
-    [requestCount, DEPLOY_FEES_AMOUNT],
+    [requestCount, AMOUNTS.DEPLOY_FEES],
     evmxChain,
     contractAbi
   );
@@ -878,7 +404,7 @@ async function runInsufficientFeesTests(
       }) as Address;
 
       if (forwarder !== '0x0000000000000000000000000000000000000000') {
-        console.log(`${colors.GREEN}Chain ${chainId}${colors.NC}`);
+        console.log(`${COLORS.GREEN}Chain ${chainId}${COLORS.NC}`);
         console.log(`Forwarder: ${forwarder}`);
         return forwarder;
       }
@@ -887,7 +413,7 @@ async function runInsufficientFeesTests(
     }
 
     const percent = Math.floor((attempts * 100) / maxAttempts);
-    process.stdout.write(`\r${colors.YELLOW}Waiting for forwarder:${colors.NC} ${percent}%`);
+    process.stdout.write(`\r${COLORS.YELLOW}Waiting for forwarder:${COLORS.NC} ${percent}%`);
 
     await new Promise(resolve => setTimeout(resolve, 5000));
     attempts++;
@@ -902,9 +428,9 @@ async function runRevertTests(addresses: ContractAddresses): Promise<void> {
   const interval = 1000; // 1 seconds
   const maxAttempts = 60; // 60 seconds
   const maxSeconds = interval * maxAttempts / 1000;
-  const endpoint = `${EVMX_API_BASE_URL}/getDetailsByTxHash`;
+  const endpoint = `${URLS.EVMX_API_BASE}/getDetailsByTxHash`;
 
-  console.log(`${colors.CYAN}Testing onchain revert${colors.NC}`);
+  console.log(`${COLORS.CYAN}Testing onchain revert${COLORS.NC}`);
 
   const abi = parseAbi([
     'function testOnChainRevert(uint32) external',
@@ -913,14 +439,14 @@ async function runRevertTests(addresses: ContractAddresses): Promise<void> {
 
   // Send on-chain revert transaction
   const hash1 = await sendTransaction(
-    addresses.appGateway,
+    addresses.appGateway!,
     'testOnChainRevert',
-    [OP_SEP_CHAIN_ID],
+    [CHAIN_IDS.OP_SEP],
     evmxChain,
     abi
   );
 
-  console.log(`${colors.CYAN}Waiting for transaction finalization${colors.NC}`);
+  console.log(`${COLORS.CYAN}Waiting for transaction finalization${COLORS.NC}`);
   let attempt = 0;
   let status = '';
 
@@ -939,7 +465,7 @@ async function runRevertTests(addresses: ContractAddresses): Promise<void> {
     }
 
     const elapsed = attempt * interval / 1000;
-    process.stdout.write(`\r${colors.YELLOW}Waiting for finalization:${colors.NC} ${elapsed}s / ${maxSeconds}s`);
+    process.stdout.write(`\r${COLORS.YELLOW}Waiting for finalization:${COLORS.NC} ${elapsed}s / ${maxSeconds}s`);
 
     await new Promise(resolve => setTimeout(resolve, interval));
     attempt++;
@@ -954,17 +480,17 @@ async function runRevertTests(addresses: ContractAddresses): Promise<void> {
   }
 
   // Send callback revert transaction
-  console.log(`${colors.CYAN}Testing callback revert${colors.NC}`);
+  console.log(`${COLORS.CYAN}Testing callback revert${COLORS.NC}`);
 
   const hash2 = await sendTransaction(
-    addresses.appGateway,
+    addresses.appGateway!,
     'testCallbackRevertWrongInputArgs',
-    [OP_SEP_CHAIN_ID],
+    [CHAIN_IDS.OP_SEP],
     evmxChain,
     abi
   );
 
-  console.log(`${colors.CYAN}Waiting for promise failed resolve${colors.NC}`);
+  console.log(`${COLORS.CYAN}Waiting for promise failed resolve${COLORS.NC}`);
   attempt = 0;
 
   while (true) {
@@ -982,7 +508,7 @@ async function runRevertTests(addresses: ContractAddresses): Promise<void> {
     }
 
     const elapsed = attempt * interval / 1000;
-    process.stdout.write(`\r${colors.YELLOW}Waiting for finalization:${colors.NC} ${elapsed}s / ${maxSeconds}s`);
+    process.stdout.write(`\r${COLORS.YELLOW}Waiting for finalization:${COLORS.NC} ${elapsed}s / ${maxSeconds}s`);
 
     await new Promise(resolve => setTimeout(resolve, interval));
     attempt++;
@@ -991,36 +517,41 @@ async function runRevertTests(addresses: ContractAddresses): Promise<void> {
   console.log(`Callback revert test completed successfully`);
 }
 
-// Fetch transaction status from the API
-async function getTxDetails(endpoint: string, txHash: string): Promise<any> {
-  try {
-    const res = await fetch(`${endpoint}?txHash=${txHash}`);
-    return await res.json();
-  } catch (error) {
-    console.error(`Failed to fetch tx status: ${error}`);
-    return {};
-  }
-}
-
 // Help function
 function showHelp(): void {
-  console.log('Usage: tsx evmx-test-script.ts [OPTIONS]');
+  console.log('Usage: npx tsx tests.ts [OPTIONS]');
   console.log('Options:');
   console.log('  -w    Run write tests');
   console.log('  -r    Run read tests');
   console.log('  -t    Run trigger tests');
   console.log('  -u    Run upload tests');
   console.log('  -s    Run scheduler tests');
+  console.log('  -i    Run insufficient fees tests');
+  console.log('  -v    Run revert tests');
   console.log('  -a    Run all tests');
   console.log('  -?    Show this help message');
   console.log('If no options are provided, this help message is displayed.');
+}
+
+// Parse command line flags
+function parseFlags(args: string[]): TestFlags {
+  return {
+    write: args.includes('-w') || args.includes('-a'),
+    read: args.includes('-r') || args.includes('-a'),
+    trigger: args.includes('-t') || args.includes('-a'),
+    upload: args.includes('-u') || args.includes('-a'),
+    scheduler: args.includes('-s') || args.includes('-a'),
+    insufficient: args.includes('-i') || args.includes('-a'),
+    revert: args.includes('-v') || args.includes('-a'),
+    all: args.includes('-a')
+  };
 }
 
 // Main function
 async function main(): Promise<void> {
   try {
     await buildContracts();
-    setupClients();
+    initializeChains();
 
     // Parse command line arguments
     const args = process.argv.slice(2);
@@ -1029,137 +560,123 @@ async function main(): Promise<void> {
       return;
     }
 
-    const flags = {
-      write: args.includes('-w') || args.includes('-a'),
-      read: args.includes('-r') || args.includes('-a'),
-      trigger: args.includes('-t') || args.includes('-a'),
-      upload: args.includes('-u') || args.includes('-a'),
-      scheduler: args.includes('-s') || args.includes('-a'),
-      insufficient: args.includes('-i') || args.includes('-a'),
-      revert: args.includes('-v') || args.includes('-a'),
-      all: args.includes('-a')
-    };
-
-    let addresses: ContractAddresses = { appGateway: '0x' };
+    const flags = parseFlags(args);
+    let addresses: ContractAddresses = { appGateway: '0x0000000000000000000000000000000000000000' as Address };
 
     // Write Tests
     if (flags.write) {
-      console.log(`${colors.GREEN}=== Running Write Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('WriteAppGateway');
-      await depositFunds(addresses.appGateway);
-      await deployOnchain(ARB_SEP_CHAIN_ID, addresses.appGateway);
-      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Write Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('WriteAppGateway', evmxChain);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
+      await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+      await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-      const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', ARB_SEP_CHAIN_ID, addresses.appGateway);
+      const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
       addresses.arbForwarder = arbAddresses.forwarder;
       addresses.arbOnchain = arbAddresses.onchain;
 
-      const opAddresses = await fetchForwarderAndOnchainAddress('multichain', OP_SEP_CHAIN_ID, addresses.appGateway);
+      const opAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
       addresses.opForwarder = opAddresses.forwarder;
       addresses.opOnchain = opAddresses.onchain;
 
-      await runWriteTests(addresses);
-      await withdrawFunds(addresses.appGateway);
+      await runWriteTests(addresses, evmxChain);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
     // Read Tests
     if (flags.read) {
-      console.log(`${colors.GREEN}=== Running Read Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('ReadAppGateway');
-      await depositFunds(addresses.appGateway);
-      await deployOnchain(ARB_SEP_CHAIN_ID, addresses.appGateway);
-      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Read Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('ReadAppGateway', evmxChain);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
+      await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+      await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-      const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', ARB_SEP_CHAIN_ID, addresses.appGateway);
+      const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
       addresses.arbForwarder = arbAddresses.forwarder;
       addresses.arbOnchain = arbAddresses.onchain;
 
-      const opAddresses = await fetchForwarderAndOnchainAddress('multichain', OP_SEP_CHAIN_ID, addresses.appGateway);
+      const opAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
       addresses.opForwarder = opAddresses.forwarder;
       addresses.opOnchain = opAddresses.onchain;
 
-      await runReadTests(addresses);
-      await withdrawFunds(addresses.appGateway);
+      await runReadTests(addresses, evmxChain);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
     // Trigger from onchain Tests
     if (flags.trigger) {
-      console.log(`${colors.GREEN}=== Running Trigger from onchain Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('OnchainTriggerAppGateway');
-      await depositFunds(addresses.appGateway);
-      await deployOnchain(ARB_SEP_CHAIN_ID, addresses.appGateway);
-      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Trigger from onchain Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('OnchainTriggerAppGateway', evmxChain);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
+      await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+      await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-      const arbAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', ARB_SEP_CHAIN_ID, addresses.appGateway);
+      const arbAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
       addresses.arbForwarder = arbAddresses.forwarder;
       addresses.arbOnchain = arbAddresses.onchain;
 
-      const opAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', OP_SEP_CHAIN_ID, addresses.appGateway);
+      const opAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
       addresses.opForwarder = opAddresses.forwarder;
       addresses.opOnchain = opAddresses.onchain;
 
       await runTriggerAppGatewayOnchainTests(addresses);
-      await withdrawFunds(addresses.appGateway);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
     // Upload to EVMx Tests
     if (flags.upload) {
-      console.log(`${colors.GREEN}=== Running Upload to EVMx Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('UploadAppGateway');
-      await depositFunds(addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Upload to EVMx Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('UploadAppGateway', evmxChain);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
       await runUploadTests("Counter", addresses.appGateway);
-      await withdrawFunds(addresses.appGateway);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
     // Schedule EVMx events Tests
     if (flags.scheduler) {
-      console.log(`${colors.GREEN}=== Running Scheduler Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('ScheduleAppGateway');
-      await depositFunds(addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Scheduler Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('ScheduleAppGateway', evmxChain);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
       await runSchedulerTests(addresses.appGateway);
-      await withdrawFunds(addresses.appGateway);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
     // Insufficient Fees Tests
     if (flags.insufficient) {
-      console.log(`${colors.GREEN}=== Running Insufficient fees Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('ReadAppGateway', 0n);
-      await depositFunds(addresses.appGateway);
-      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
-      await runInsufficientFeesTests('multichain', OP_SEP_CHAIN_ID, addresses.appGateway);
-      await withdrawFunds(addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Insufficient fees Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('ReadAppGateway', evmxChain, 0n);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
+      await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+      await runInsufficientFeesTests('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
     // Revert Tests
     if (flags.revert) {
-      console.log(`${colors.GREEN}=== Running Revert Tests ===${colors.NC}`);
-      addresses.appGateway = await deployAppGateway('RevertAppGateway');
-      await depositFunds(addresses.appGateway);
-      await deployOnchain(OP_SEP_CHAIN_ID, addresses.appGateway);
+      console.log(`${COLORS.GREEN}=== Running Revert Tests ===${COLORS.NC}`);
+      addresses.appGateway = await deployAppGateway('RevertAppGateway', evmxChain);
+      await depositFunds(addresses.appGateway, arbChain, evmxChain);
+      await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-      const opAddresses = await fetchForwarderAndOnchainAddress('counter', OP_SEP_CHAIN_ID, addresses.appGateway);
+      const opAddresses = await fetchForwarderAndOnchainAddress('counter', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
       addresses.opForwarder = opAddresses.forwarder;
       addresses.opOnchain = opAddresses.onchain;
 
       await runRevertTests(addresses);
-      await withdrawFunds(addresses.appGateway);
+      await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
     }
 
-    console.log(`${colors.GREEN}All selected tests completed successfully!${colors.NC}`);
+    console.log(`${COLORS.GREEN}All selected tests completed successfully!${COLORS.NC}`);
 
   } catch (error) {
-    console.error(`${colors.RED}Error:${colors.NC}`, error);
+    console.error(`${COLORS.RED}Error:${COLORS.NC}`, error);
     process.exit(1);
   }
 }
 
 // Export the setup for external use
 export {
-  setupClients,
-  deployContract,
-  sendTransaction,
-  buildContracts,
-  colors,
+  initializeChains,
   evmxChain,
   arbChain,
   opChain
