@@ -8,5 +8,16 @@
     "@types/node": "^22.15.23",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "all": "tsx script/runIntegrationTests.ts -a",
+    "write": "tsx script/runIntegrationTests.ts -w",
+    "read": "tsx script/runIntegrationTests.ts -r",
+    "trigger": "tsx script/runIntegrationTests.ts -t",
+    "upload": "tsx script/runIntegrationTests.ts -u",
+    "scheduler": "tsx script/runIntegrationTests.ts -s",
+    "insufficient": "tsx script/runIntegrationTests.ts -i",
+    "revert": "tsx script/runIntegrationTests.ts -v"
   }
 }
