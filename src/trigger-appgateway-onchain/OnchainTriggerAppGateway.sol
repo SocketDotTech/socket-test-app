@@ -68,8 +68,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
     function initializeOnChain(uint32 chainSlug_) public override {
-        address onchainAddress = getOnChainAddress(onchainToEVMx, chainSlug_);
-        watcherPrecompileConfig().setIsValidPlug(chainSlug_, onchainAddress, true);
+        _setValidPlug(true, chainSlug_, onchainToEVMx);
     }
 
     /**
@@ -88,7 +87,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
      * @param value Value to update from the onchain contract on AppGateway
      */
-    function callFromChain(uint256 value) external async(bytes("")) onlyWatcherPrecompile {
+    function callFromChain(uint256 value) external async(bytes("")) onlyWatcher {
         valueOnGateway += value;
     }
 
@@ -99,7 +98,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param value Value to update on the other OnchainTrigger contract
      * @param targetChain Chain where the value should be updated
      */
-    function propagateToChain(uint256 value, uint32 targetChain) external async(bytes("")) onlyWatcherPrecompile {
+    function propagateToChain(uint256 value, uint32 targetChain) external async(bytes("")) onlyWatcher {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(value);
     }
