@@ -36,7 +36,7 @@ contract RevertAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(counter, chainSlug_, IsPlug.YES);
     }
 
@@ -45,7 +45,7 @@ contract RevertAppGateway is AppGatewayBase {
      * @dev Sets up the validity of the deployed OnchainTrigger contract on the specified chain
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
-    function initializeOnChain(uint32 chainSlug_) public override async(bytes("")) {
+    function initializeOnChain(uint32 chainSlug_) public override async {
         address instance = forwarderAddresses[counter][chainSlug_];
         ICounter(instance).increment();
     }
@@ -57,7 +57,7 @@ contract RevertAppGateway is AppGatewayBase {
      *         unexistentFunction exists on the interface but not on the onchain contract. This will cause an onchain revert.
      * @param chainSlug A uint32 identifier for the target chain to test the revert on
      */
-    function testOnChainRevert(uint32 chainSlug) public async(bytes("")) {
+    function testOnChainRevert(uint32 chainSlug) public async {
         address instance = forwarderAddresses[counter][chainSlug];
         ICounter(instance).unexistentFunction();
     }
@@ -69,7 +69,7 @@ contract RevertAppGateway is AppGatewayBase {
      *      notCorrectInputArgs that will revert due to wrong input parameters
      * @param chainSlug A uint32 identifier for the target chain to test the callback revert on
      */
-    function testCallbackRevertWrongInputArgs(uint32 chainSlug) public async(bytes("")) {
+    function testCallbackRevertWrongInputArgs(uint32 chainSlug) public async {
         _setOverrides(Read.ON, Parallel.ON);
         address instance = forwarderAddresses[counter][chainSlug];
         ICounter(instance).counter();

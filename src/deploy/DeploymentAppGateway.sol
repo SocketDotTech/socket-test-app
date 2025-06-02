@@ -63,7 +63,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Triggers asynchronous multi-chain deployments with different initialization scenarios
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(noPlugNoInititialize, chainSlug_, IsPlug.NO);
         _deploy(
             noPlugInitialize, chainSlug_, IsPlug.NO, abi.encodeWithSelector(NoPlugInitialize.initialise.selector, 10)
@@ -84,7 +84,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Calls initialize functions on specific contracts after deployment
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function initializeOnChain(uint32 chainSlug_) public override async(bytes("")) {
+    function initializeOnChain(uint32 chainSlug_) public override async {
         PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]).initialise(10);
         PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]).initialise(10);
     }
@@ -94,7 +94,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Performs checks on each contract type to ensure proper initialization and functionality
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function contractValidation(uint32 chainSlug_) external async(bytes("")) {
+    function contractValidation(uint32 chainSlug_) external async {
         address noPlugNoInititializeForwarder = forwarderAddresses[noPlugNoInititialize][chainSlug_];
         address noPlugInitializeForwarder = forwarderAddresses[noPlugInitialize][chainSlug_];
         address plugNoInitializeForwarder = forwarderAddresses[plugNoInitialize][chainSlug_];

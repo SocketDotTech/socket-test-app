@@ -58,7 +58,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(onchainToEVMx, chainSlug_, IsPlug.YES);
     }
 
@@ -76,7 +76,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Sends the current valueOnGateway to the OnchainTrigger contract on the specified chain
      * @param targetChain The identifier of the destination chain
      */
-    function updateOnchain(uint32 targetChain) public async(bytes("")) {
+    function updateOnchain(uint32 targetChain) public async {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnGateway);
     }
@@ -87,7 +87,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
      * @param value Value to update from the onchain contract on AppGateway
      */
-    function callFromChain(uint256 value) external async(bytes("")) onlyWatcher {
+    function callFromChain(uint256 value) external async onlyWatcher {
         valueOnGateway += value;
     }
 
@@ -98,7 +98,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param value Value to update on the other OnchainTrigger contract
      * @param targetChain Chain where the value should be updated
      */
-    function propagateToChain(uint256 value, uint32 targetChain) external async(bytes("")) onlyWatcher {
+    function propagateToChain(uint256 value, uint32 targetChain) external async onlyWatcher {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(value);
     }

@@ -40,7 +40,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Required by AppGatewayBase but not used in this implementation
      * @param chainSlug_ The identifier of the target chain (unused)
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {}
+    function deployContracts(uint32 chainSlug_) external async {}
 
     /**
      * @notice Empty initialization function as no post-deployment setup is needed
@@ -64,7 +64,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Initiates an asynchronous read operation with parallel execution enabled
      * Sets up a promise to handle the read result via the handleRead function
      */
-    function read() public async(bytes("")) {
+    function read() public async {
         _setOverrides(Read.ON, Parallel.ON);
         // TODO: Remove Parallel.ON after new contract deployment to devnet
         ICounter(counterForwarder).counter();

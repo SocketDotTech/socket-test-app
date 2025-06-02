@@ -52,7 +52,7 @@ contract ReadAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol.
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
@@ -71,7 +71,7 @@ contract ReadAppGateway is AppGatewayBase {
      * and stores the results in the values array.
      * @param instance_ Address of the ReadMultichain instance to read from
      */
-    function triggerParallelRead(address instance_) public async(bytes("")) {
+    function triggerParallelRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IReadMultichain(instance_).values(i);
@@ -87,7 +87,7 @@ contract ReadAppGateway is AppGatewayBase {
      * @param instance1_ Address of the first ReadMultichain instance
      * @param instance2_ Address of the second ReadMultichain instance
      */
-    function triggerAltRead(address instance1_, address instance2_) public async(bytes("")) {
+    function triggerAltRead(address instance1_, address instance2_) public async {
         _setOverrides(Read.ON, Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             if (i % 2 == 0) {

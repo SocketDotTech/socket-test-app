@@ -43,7 +43,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
@@ -61,7 +61,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Calls the increase function 10 times in sequence and processes the return values
      * @param instance_ Address of the WriteMultichain instance to write to
      */
-    function triggerSequentialWrite(address instance_) public async(bytes("")) {
+    function triggerSequentialWrite(address instance_) public async {
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
             IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
@@ -73,7 +73,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Calls the increase function 10 times in parallel and processes the return values
      * @param instance_ Address of the WriteMultichain instance to write to
      */
-    function triggerParallelWrite(address instance_) public async(bytes("")) {
+    function triggerParallelWrite(address instance_) public async {
         _setOverrides(Parallel.ON);
         for (uint256 i = 0; i < 10; i++) {
             IWriteMultichain(instance_).increase();
@@ -88,7 +88,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @param instance1_ Address of the first WriteMultichain instance
      * @param instance2_ Address of the second WriteMultichain instance
      */
-    function triggerAltWrite(address instance1_, address instance2_) public async(bytes("")) {
+    function triggerAltWrite(address instance1_, address instance2_) public async {
         for (uint256 i = 0; i < 5; i++) {
             IWriteMultichain(instance1_).increase();
             IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));

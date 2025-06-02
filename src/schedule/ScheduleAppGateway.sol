@@ -39,7 +39,7 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @dev This function is a placeholder for the ScheduleAppGateway since no contracts need deployment
      *      The chainSlug parameter is required by the interface but not used.
      */
-    function deployContracts(uint32) external async(bytes("")) {
+    function deployContracts(uint32) external async {
         return;
     }
 
