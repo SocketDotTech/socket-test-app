@@ -11,18 +11,18 @@ import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
  */
 contract ScheduleAppGateway is AppGatewayBase {
     /**
-     * @notice Array of timeout durations in seconds
+     * @notice Array of schedule durations in seconds
      * @dev These values define the delay periods in seconds for scheduled executions
      */
-    uint256[] public timeoutsInSeconds = [1, 20, 60, 120, 600, 1200, 5000];
+    uint256[] public schedulesInSeconds = [1, 20, 60, 120, 600, 1200, 5000];
 
     /**
-     * @notice Emitted when a scheduled timeout is resolved
-     * @param index The index of the timeout in the timeoutsInSeconds array
-     * @param creationTimestamp The timestamp when the timeout was created
-     * @param executionTimestamp The timestamp when the timeout was executed
+     * @notice Emitted when a scheduled schedule is resolved
+     * @param index The index of the schedule in the schedulesInSeconds array
+     * @param creationTimestamp The timestamp when the schedule was created
+     * @param executionTimestamp The timestamp when the schedule was executed
      */
-    event TimeoutResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
+    event ScheduleResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
 
     /**
      * @notice Constructs the ScheduleAppGateway
@@ -53,24 +53,24 @@ contract ScheduleAppGateway is AppGatewayBase {
     }
 
     /**
-     * @notice Triggers multiple timeouts with different delay periods
-     * @dev Sets up scheduled calls to resolveTimeout with various delay periods defined in timeoutsInSeconds
+     * @notice Triggers multiple schedules with different delay periods
+     * @dev Sets up scheduled calls to resolveSchedule with various delay periods defined in schedulesInSeconds
      */
-    function triggerTimeouts() public {
-        for (uint256 i = 0; i < timeoutsInSeconds.length; i++) {
-            bytes memory payload = abi.encodeWithSelector(this.resolveTimeout.selector, i, block.timestamp);
-            watcherPrecompile__().setTimeout(timeoutsInSeconds[i], payload);
+    function triggerSchedules() public {
+        for (uint256 i = 0; i < schedulesInSeconds.length; i++) {
+            _setSchedule(schedulesInSeconds[i]);
+            then(this.resolveSchedule.selector, abi.encode(i, block.timestamp));
         }
     }
 
     /**
-     * @notice Callback function executed when a timeout is reached
-     * @dev Emits a TimeoutResolved event with timing information
-     * @param index_ The index of the timeout in the timeoutsInSeconds array
-     * @param creationTimestamp_ The timestamp when the timeout was created
+     * @notice Callback function executed when a schedule is reached
+     * @dev Emits a ScheduleResolved event with timing information
+     * @param index_ The index of the schedule in the schedulesInSeconds array
+     * @param creationTimestamp_ The timestamp when the schedule was created
      */
-    function resolveTimeout(uint256 index_, uint256 creationTimestamp_) public {
-        emit TimeoutResolved(index_, creationTimestamp_, block.timestamp);
+    function resolveSchedule(uint256 index_, uint256 creationTimestamp_) public {
+        emit ScheduleResolved(index_, creationTimestamp_, block.timestamp);
     }
 
     /**

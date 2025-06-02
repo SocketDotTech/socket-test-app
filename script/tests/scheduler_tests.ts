@@ -10,53 +10,53 @@ export async function runSchedulerTests(
   appGateway: Address,
   evmxChain: ChainConfig
 ): Promise<void> {
-  console.log(`${COLORS.CYAN}Reading timeouts from the contract:${COLORS.NC}`);
+  console.log(`${COLORS.CYAN}Reading schedules from the contract:${COLORS.NC}`);
   const abi = parseAbi([
-    'function timeoutsInSeconds(uint256) external view returns (uint256)',
-    'function triggerTimeouts() external'
+    'function schedulesInSeconds(uint256) external view returns (uint256)',
+    'function triggerSchedules() external'
   ]);
 
-  let maxTimeout = 0;
-  let numberOfTimeouts = 0;
+  let maxSchedule = 0;
+  let numberOfSchedules = 0;
 
   while (true) {
     try {
-      const timeout = await evmxChain.client.readContract({
+      const schedule = await evmxChain.client.readContract({
         address: appGateway,
         abi,
-        functionName: 'timeoutsInSeconds',
-        args: [numberOfTimeouts]
+        functionName: 'schedulesInSeconds',
+        args: [numberOfSchedules]
       }) as number;
 
-      if (timeout === 0) break;
+      if (schedule === 0) break;
 
-      console.log(`Timeout ${numberOfTimeouts}: ${timeout} seconds`);
-      numberOfTimeouts++;
+      console.log(`Schedule ${numberOfSchedules}: ${schedule} seconds`);
+      numberOfSchedules++;
 
-      if (timeout > maxTimeout) {
-        maxTimeout = timeout;
+      if (schedule > maxSchedule) {
+        maxSchedule = schedule;
       }
     } catch (error) {
       break;
     }
   }
 
-  console.log(`${COLORS.CYAN}Triggering timeouts...${COLORS.NC}`);
+  console.log(`${COLORS.CYAN}Triggering schedules...${COLORS.NC}`);
   await sendTransaction(
     appGateway,
-    'triggerTimeouts',
+    'triggerSchedules',
     [],
     evmxChain,
     abi
   );
 
-  console.log(`${COLORS.CYAN}Fetching TimeoutResolved events...${COLORS.NC}`);
+  console.log(`${COLORS.CYAN}Fetching ScheduleResolved events...${COLORS.NC}`);
 
-  await awaitEvents(numberOfTimeouts, 'TimeoutResolved(uint256,uint256,uint256)', appGateway, evmxChain, Number(maxTimeout));
+  await awaitEvents(numberOfSchedules, 'ScheduleResolved(uint256,uint256,uint256)', appGateway, evmxChain, Number(maxSchedule));
 
   const logs = await evmxChain.client.getLogs({
     address: appGateway,
-    event: parseAbi(['event TimeoutResolved(uint256,uint256,uint256)'])[0],
+    event: parseAbi(['event ScheduleResolved(uint256,uint256,uint256)'])[0],
     fromBlock: 'earliest',
     toBlock: 'latest'
   });
@@ -69,7 +69,7 @@ export async function runSchedulerTests(
       const creationTimestamp = BigInt('0x' + dataHex.slice(64, 128));
       const executionTimestamp = BigInt('0x' + dataHex.slice(128, 192));
 
-      console.log(`${COLORS.GREEN}Timeout Resolved:${COLORS.NC}`);
+      console.log(`${COLORS.GREEN}Schedule Resolved:${COLORS.NC}`);
       console.log(`  Index: ${index}`);
       console.log(`  Created at: ${creationTimestamp}`);
       console.log(`  Executed at: ${executionTimestamp}`);
