@@ -124,12 +124,12 @@ export async function withdrawFunds(
 
   if (amountToWithdraw > 0n) {
     const abi = parseAbi([
-      'function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address to) external'
+      'function withdrawCredits(uint32 chainId, address token, uint256 amount, address to) external'
     ]);
 
     await sendTransaction(
       appGateway,
-      'withdrawFeeTokens',
+      'withdrawCredits',
       [CHAIN_IDS.ARB_SEP, process.env.ARBITRUM_TEST_USDC, amountToWithdraw, arbChain.walletClient.account?.address],
       evmxChain,
       abi

@@ -112,7 +112,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param amount_ The amount to withdraw
      * @param receiver_ The address that will receive the withdrawn fees
      */
-    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawCredits(chainSlug_, token_, amount_, maxFees, receiver_);
     }
 }
