@@ -56,7 +56,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @param chainSlug_ The identifier of the chain where the contract exists
      */
     function uploadToEVMx(address onchainContract, uint32 chainSlug_) public {
-        counterForwarder = addressResolver__.getOrDeployForwarderContract(address(this), onchainContract, chainSlug_);
+        counterForwarder = asyncDeployer__().getOrDeployForwarderContract(onchainContract, chainSlug_);
     }
 
     /**
