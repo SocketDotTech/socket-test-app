@@ -32,6 +32,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @param fees_ Fee configuration for multi-chain operations
      */
     constructor(address addressResolver_, uint256 fees_) {
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 

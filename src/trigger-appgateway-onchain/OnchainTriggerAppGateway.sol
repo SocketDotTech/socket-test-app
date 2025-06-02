@@ -50,6 +50,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      */
     constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[onchainToEVMx] = abi.encodePacked(type(OnchainTrigger).creationCode);
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 

@@ -28,6 +28,7 @@ contract RevertAppGateway is AppGatewayBase {
      */
     constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[counter] = abi.encodePacked(type(Counter).creationCode);
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 

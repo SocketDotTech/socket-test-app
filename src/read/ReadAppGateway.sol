@@ -43,8 +43,9 @@ contract ReadAppGateway is AppGatewayBase {
      */
     constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(ReadMultichain).creationCode);
-        _setMaxFees(fees_);
         values = new uint256[](10);
+        _initializeAppGateway(addressResolver_);
+        _setMaxFees(fees_);
     }
 
     /**

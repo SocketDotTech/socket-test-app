@@ -31,6 +31,7 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @param fees_ Fee configuration for onchain operations
      */
     constructor(address addressResolver_, uint256 fees_) {
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 

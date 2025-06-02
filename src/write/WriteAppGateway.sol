@@ -35,6 +35,7 @@ contract WriteAppGateway is AppGatewayBase {
      */
     constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 
