@@ -45,7 +45,7 @@ contract RevertAppGateway is AppGatewayBase {
      * @dev Sets up the validity of the deployed OnchainTrigger contract on the specified chain
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
-    function initialize(uint32 chainSlug_) public override async(bytes("")) {
+    function initializeOnChain(uint32 chainSlug_) public override async(bytes("")) {
         address instance = forwarderAddresses[counter][chainSlug_];
         ICounter(instance).increment();
     }

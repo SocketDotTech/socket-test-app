@@ -47,7 +47,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Required by AppGatewayBase but not used in this implementation
      * @param chainSlug_ The identifier of the chain (unused)
      */
-    function initialize(uint32 chainSlug_) public override {}
+    function initializeOnChain(uint32 chainSlug_) public override {}
 
     /**
      * @notice Uploads an existing onchain contract to EVMx

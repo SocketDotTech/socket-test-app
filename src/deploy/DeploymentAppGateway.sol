@@ -84,7 +84,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Calls initialize functions on specific contracts after deployment
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function initialize(uint32 chainSlug_) public override async(bytes("")) {
+    function initializeOnChain(uint32 chainSlug_) public override async(bytes("")) {
         PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]).initialise(10);
         PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]).initialise(10);
     }

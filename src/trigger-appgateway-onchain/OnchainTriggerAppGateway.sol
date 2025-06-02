@@ -67,7 +67,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Sets up the validity of the deployed OnchainTrigger contract on the specified chain
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
-    function initialize(uint32 chainSlug_) public override {
+    function initializeOnChain(uint32 chainSlug_) public override {
         address onchainAddress = getOnChainAddress(onchainToEVMx, chainSlug_);
         watcherPrecompileConfig().setIsValidPlug(chainSlug_, onchainAddress, true);
     }

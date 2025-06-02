@@ -61,7 +61,7 @@ contract ReadAppGateway is AppGatewayBase {
      * @dev No initialization needed for this application, so implementation is empty.
      *      The chainSlug parameter is required by the interface but not used.
      */
-    function initialize(uint32) public pure override {
+    function initializeOnChain(uint32) public pure override {
         return;
     }
 
