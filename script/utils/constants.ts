@@ -13,7 +13,7 @@ export const URLS = {
 
 export const AMOUNTS = {
   DEPLOY_FEES: parseEther('10'), // 10 ETH
-  TEST_USDC: 100000000n, // 100 TEST USDC
+  TEST_USDC: 10000000n, // 10 TEST USDC
   GAS_BUFFER: 100000000n, // 0.1 Gwei
   GAS_LIMIT: 50000000000n, // Gas limit estimate
 } as const;
@@ -25,4 +25,3 @@ export const COLORS = {
   RED: '\x1b[0;31m',
   NC: '\x1b[0m', // No Color
 } as const;
-
