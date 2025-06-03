@@ -60,7 +60,7 @@ export async function depositFunds(
   ]);
 
   const feesPlugAbi = parseAbi([
-    'function depositToFeeAndNative(address token, address appGateway, uint256 amount) external'
+    'function depositCreditAndNative(address token, address appGateway, uint256 amount) external'
   ]);
 
   const walletAddress = arbChain.walletClient.account?.address;
@@ -87,7 +87,7 @@ export async function depositFunds(
   // Deposit funds
   await sendTransaction(
     process.env.ARBITRUM_FEES_PLUG as Address,
-    'depositToFeeAndNative',
+    'depositCreditAndNative',
     [process.env.ARBITRUM_TEST_USDC as Address, appGateway, AMOUNTS.TEST_USDC],
     arbChain,
     feesPlugAbi
