@@ -18,7 +18,7 @@ contract ReadAppGateway is AppGatewayBase {
      * @notice Number of requests to call onchain
      * @dev Used to maximize number of requests done
      */
-    uint256 numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 1;
+    uint256 public numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 1;
 
     /**
      * @notice Identifier for the ReadMultichain contract
