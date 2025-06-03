@@ -65,11 +65,10 @@ contract UploadAppGateway is AppGatewayBase {
      * Sets up a promise to handle the read result via the handleRead function
      */
     function read() public async {
-        _setOverrides(Read.ON, Parallel.ON);
-        // TODO: Remove Parallel.ON after new contract deployment to devnet
+        _setOverrides(Read.ON);
         ICounter(counterForwarder).counter();
         then(this.handleRead.selector, abi.encode(counterForwarder));
-        _setOverrides(Read.OFF, Parallel.OFF);
+        _setOverrides(Read.OFF);
     }
 
     /**
