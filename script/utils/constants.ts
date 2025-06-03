@@ -13,9 +13,9 @@ export const URLS = {
 
 export const AMOUNTS = {
   DEPLOY_FEES: parseEther('10'), // 10 ETH
-  TEST_USDC: BigInt('100000000'), // 100 TEST USDC
-  GAS_BUFFER: BigInt('100000000'), // 0.1 Gwei
-  GAS_LIMIT: BigInt('50000000000'), // Gas limit estimate
+  TEST_USDC: 100000000n, // 100 TEST USDC
+  GAS_BUFFER: 100000000n, // 0.1 Gwei
+  GAS_LIMIT: 50000000000n, // Gas limit estimate
 } as const;
 
 export const COLORS = {

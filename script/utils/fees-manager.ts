@@ -1,5 +1,5 @@
 // fees/manager.ts
-import { parseAbi, type Address } from 'viem';
+import { parseAbi, formatEther, type Address } from 'viem';
 import { ChainConfig } from './types.js';
 import { COLORS, AMOUNTS, CHAIN_IDS } from './constants.js';
 import { sendTransaction } from './deployer.js';
@@ -27,7 +27,7 @@ export async function checkAvailableFees(
       }) as bigint;
 
       if (availableFees > 0n) {
-        console.log(`Funds available: ${availableFees} wei`);
+        console.log(`Funds available: ${formatEther(availableFees)} Credits - ${availableFees} wei`);
         return availableFees;
       }
     } catch (error) {
@@ -104,29 +104,31 @@ export async function withdrawFunds(
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Withdrawing funds${COLORS.NC}`);
 
-  const availableFees = await checkAvailableFees(appGateway, evmxChain);
+  let availableFees = await checkAvailableFees(appGateway, evmxChain);
 
   if (availableFees === 0n) {
     console.log('No available fees to withdraw.');
     return;
   }
 
-  // Get gas price and calculate withdrawal amount
-  const gasPrice = await arbChain.client.getGasPrice();
-  const estimatedGasCost = AMOUNTS.GAS_LIMIT * (gasPrice + AMOUNTS.GAS_BUFFER);
+  const abi = parseAbi([
+    'function maxFees() external returns (uint256)',
+    'function withdrawCredits(uint32 chainId, address token, uint256 amount, address to) external',
+    'function transferCredits(address to_, uint256 amount_) external'
+  ]);
 
-  let amountToWithdraw = 0n;
-  if (availableFees > estimatedGasCost) {
-    amountToWithdraw = availableFees - estimatedGasCost;
-  }
+  const maxFees = await evmxChain.client.readContract({
+    address: appGateway,
+    abi,
+    functionName: 'maxFees',
+  });
+  console.log(`Max fees ${formatEther(maxFees)} Credits - ${maxFees} wei`);
 
-  console.log(`Withdrawing ${amountToWithdraw} wei`);
+  let amountToWithdraw = availableFees - AMOUNTS.DEPLOY_FEES;
+
+  console.log(`Withdrawing ${formatEther(amountToWithdraw)} Credits - ${amountToWithdraw} wei`);
 
   if (amountToWithdraw > 0n) {
-    const abi = parseAbi([
-      'function withdrawCredits(uint32 chainId, address token, uint256 amount, address to) external'
-    ]);
-
     await sendTransaction(
       appGateway,
       'withdrawCredits',
@@ -137,4 +139,15 @@ export async function withdrawFunds(
   } else {
     console.log('No funds available for withdrawal after gas cost estimation.');
   }
+
+  // transfer the rest to the EOA
+  availableFees = await checkAvailableFees(appGateway, evmxChain);
+
+  await sendTransaction(
+    appGateway,
+    'transferCredits',
+    [evmxChain.walletClient.account?.address, availableFees],
+    evmxChain,
+    abi
+  );
 }
