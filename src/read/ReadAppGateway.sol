@@ -135,6 +135,25 @@ contract ReadAppGateway is AppGatewayBase {
     }
 
     /**
+     * @notice Transfers fee credits from this contract to a specified address
+     * @dev Moves a specified amount of fee credits from the current contract to the given recipient
+     * @param to_ The address to transfer credits to
+     * @param amount_ The amount of credits to transfer
+     */
+    function transferCredits(address to_, uint256 amount_) external {
+        feesManager__().transferCredits(address(this), to_, amount_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
+    }
+
+    /**
      * @notice Increases the fee payment for a specific payload request
      * @dev Allows modification of fee settings for a specific payload
      * @param requestCount_ Request count taken from api or from RequestSubmitted event
