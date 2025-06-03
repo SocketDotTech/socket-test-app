@@ -15,6 +15,12 @@ import "./ReadMultichain.sol";
  */
 contract ReadAppGateway is AppGatewayBase {
     /**
+     * @notice Number of requests to call onchain
+     * @dev Used to maximize number of requests done
+     */
+    uint256 numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 1;
+
+    /**
      * @notice Identifier for the ReadMultichain contract
      * @dev Used to track ReadMultichain contract instances across chains
      */
@@ -43,7 +49,7 @@ contract ReadAppGateway is AppGatewayBase {
      */
     constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(ReadMultichain).creationCode);
-        values = new uint256[](10);
+        values = new uint256[](numberOfRequests);
         _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
@@ -74,9 +80,9 @@ contract ReadAppGateway is AppGatewayBase {
      */
     function triggerParallelRead(address instance_) public async {
         _setOverrides(Read.ON, Parallel.ON);
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
             IReadMultichain(instance_).values(i);
-            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
+            then(this.handleValue.selector, abi.encode(i, instance_));
         }
         _setOverrides(Read.OFF, Parallel.OFF);
     }
@@ -90,7 +96,7 @@ contract ReadAppGateway is AppGatewayBase {
      */
     function triggerAltRead(address instance1_, address instance2_) public async {
         _setOverrides(Read.ON, Parallel.ON);
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
             if (i % 2 == 0) {
                 IReadMultichain(instance1_).values(i);
                 IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));

@@ -13,6 +13,7 @@ export async function runReadTests(
   console.log(`${COLORS.CYAN}Running all read tests functions...${COLORS.NC}`);
 
   const abi = parseAbi([
+    'function numberOfRequests() external view returns (uint256)',
     'function triggerParallelRead(address forwarder) external',
     'function triggerAltRead(address forwarder1, address forwarder2) external'
   ]);
@@ -20,6 +21,12 @@ export async function runReadTests(
   if (!addresses.appGateway || !addresses.opForwarder || !addresses.arbForwarder) {
     throw new Error('Required addresses not found');
   }
+
+  const numberOfRequests = await evmxChain.client.readContract({
+    address: addresses.appGateway,
+    abi,
+    functionName: 'numberOfRequests',
+  });
 
   // 1. Trigger Parallel Read
   await sendTransaction(
@@ -29,7 +36,7 @@ export async function runReadTests(
     evmxChain,
     abi
   );
-  await awaitEvents(10, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
 
   // 2. Trigger Alternating Read
   await sendTransaction(
@@ -39,7 +46,7 @@ export async function runReadTests(
     evmxChain,
     abi
   );
-  await awaitEvents(20, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests * 2n, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
 }
 
 export async function executeReadTests(

@@ -13,6 +13,7 @@ export async function runWriteTests(
   console.log(`${COLORS.CYAN}Running all write tests functions...${COLORS.NC}`);
 
   const abi = parseAbi([
+    'function numberOfRequests() external view returns (uint256)',
     'function triggerSequentialWrite(address forwarder) external',
     'function triggerParallelWrite(address forwarder) external',
     'function triggerAltWrite(address forwarder1, address forwarder2) external'
@@ -22,6 +23,13 @@ export async function runWriteTests(
     throw new Error('Required addresses not found');
   }
 
+  const numberOfRequests = await evmxChain.client.readContract({
+    address: addresses.appGateway,
+    abi,
+    functionName: 'numberOfRequests',
+  });
+
+
   // 1. Trigger Sequential Write
   await sendTransaction(
     addresses.appGateway,
@@ -30,7 +38,7 @@ export async function runWriteTests(
     evmxChain,
     abi
   );
-  await awaitEvents(10, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
 
   // 2. Trigger Parallel Write
   await sendTransaction(
@@ -40,7 +48,7 @@ export async function runWriteTests(
     evmxChain,
     abi
   );
-  await awaitEvents(20, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests * 2n, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
 
   // 3. Trigger Alternating Write
   await sendTransaction(
@@ -50,7 +58,7 @@ export async function runWriteTests(
     evmxChain,
     abi
   );
-  await awaitEvents(30, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests * 3n, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
 }
 
 export async function executeWriteTests(

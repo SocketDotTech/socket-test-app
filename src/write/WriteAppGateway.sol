@@ -14,6 +14,12 @@ import "./WriteMultichain.sol";
  */
 contract WriteAppGateway is AppGatewayBase {
     /**
+     * @notice Number of requests to call onchain
+     * @dev Used to maximize number of requests done
+     */
+    uint256 public numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 2;
+
+    /**
      * @notice Identifier for the WriteMultichain contract
      * @dev Used to track WriteMultichain contract instances across chains
      */
@@ -63,7 +69,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @param instance_ Address of the WriteMultichain instance to write to
      */
     function triggerSequentialWrite(address instance_) public async {
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
             IWriteMultichain(instance_).increase();
             IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
         }
@@ -76,7 +82,7 @@ contract WriteAppGateway is AppGatewayBase {
      */
     function triggerParallelWrite(address instance_) public async {
         _setOverrides(Parallel.ON);
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
             IWriteMultichain(instance_).increase();
             IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
         }

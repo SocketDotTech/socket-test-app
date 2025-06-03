@@ -16,8 +16,8 @@ export async function runSchedulerTests(
     'function triggerSchedules() external'
   ]);
 
-  let maxSchedule = 0;
-  let numberOfSchedules = 0;
+  let maxSchedule = 0n;
+  let numberOfSchedules = 0n;
 
   while (true) {
     try {
@@ -26,7 +26,7 @@ export async function runSchedulerTests(
         abi,
         functionName: 'schedulesInSeconds',
         args: [numberOfSchedules]
-      }) as number;
+      });
 
       if (schedule === 0) break;
 
