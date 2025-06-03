@@ -18,7 +18,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @notice Number of requests to call onchain
      * @dev Used to maximize number of requests done
      */
-    uint256 public numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 2;
+    uint256 public numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 1;
 
     /**
      * @notice Identifier for the WriteMultichain contract
