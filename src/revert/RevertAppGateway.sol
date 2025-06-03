@@ -98,7 +98,7 @@ contract RevertAppGateway is AppGatewayBase {
      * @param receiver_ The address that will receive the withdrawn fees
      */
     function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawCredits(chainSlug_, token_, amount_, maxFees, receiver_);
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
     }
 
     /**

@@ -2,7 +2,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/utils/common/Constants.sol";
 import "./IWriteMultichain.sol";
 import "./WriteMultichain.sol";
 
@@ -18,7 +17,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @notice Number of requests to call onchain
      * @dev Used to maximize number of requests done
      */
-    uint256 public numberOfRequests = REQUEST_PAYLOAD_COUNT_LIMIT - 1;
+    uint256 public numberOfRequests = 10;
 
     /**
      * @notice Identifier for the WriteMultichain contract
@@ -129,7 +128,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @param receiver_ The address that will receive the withdrawn fees
      */
     function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawCredits(chainSlug_, token_, amount_, maxFees, receiver_);
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
     }
 
     /**
