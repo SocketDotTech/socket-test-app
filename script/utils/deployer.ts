@@ -74,7 +74,8 @@ export async function sendTransaction(
   functionName: string,
   args: any[] = [],
   chainConfig: ChainConfig,
-  abi: Abi
+  abi: Abi,
+  value: bigint = 0n
 ): Promise<Hash> {
   console.log(`${COLORS.CYAN}Sending transaction to ${functionName} on ${to}${COLORS.NC}`);
 
@@ -86,7 +87,8 @@ export async function sendTransaction(
       args,
       account: chainConfig.walletClient.account!,
       chain: chainConfig.walletClient.chain,
-      gasPrice: chainConfig.chainId === CHAIN_IDS.EVMX ? 0n : undefined
+      gasPrice: chainConfig.chainId === CHAIN_IDS.EVMX ? 0n : undefined,
+      value: value
     });
 
     await new Promise(resolve => setTimeout(resolve, 2000));
