@@ -53,6 +53,9 @@ export async function depositFunds(
   evmxChain: ChainConfig
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Depositing funds${COLORS.NC}`);
+  // TODO: Check balance on FeesPlug and then EVMx
+  // if not 100 credits : mint missing credits
+  // if 100 or more transfer to new appgateway
 
   const erc20Abi = parseAbi([
     'function mint(address to, uint256 amount) external',
