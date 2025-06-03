@@ -88,7 +88,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
      * @param value Value to update from the onchain contract on AppGateway
      */
-    function callFromChain(uint256 value) external async onlyWatcher {
+    function callFromChain(uint256 value) external onlyWatcher {
         valueOnGateway += value;
     }
 
