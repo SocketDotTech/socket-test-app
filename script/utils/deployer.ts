@@ -107,7 +107,7 @@ export async function deployAppGateway(
 ): Promise<Address> {
   return deployContract(
     filename,
-    [process.env.ADDRESS_RESOLVER, deployFees],
+    [process.env.ADDRESS_RESOLVER, deployFees / 2n],
     evmxChain
   );
 }
