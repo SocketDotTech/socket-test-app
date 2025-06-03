@@ -57,7 +57,7 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @notice Triggers multiple schedules with different delay periods
      * @dev Sets up scheduled calls to resolveSchedule with various delay periods defined in schedulesInSeconds
      */
-    function triggerSchedules() public {
+    function triggerSchedules() public async {
         for (uint256 i = 0; i < schedulesInSeconds.length; i++) {
             _setSchedule(schedulesInSeconds[i]);
             then(this.resolveSchedule.selector, abi.encode(i, block.timestamp));
