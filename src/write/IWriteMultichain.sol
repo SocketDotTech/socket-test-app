@@ -18,13 +18,4 @@ interface IWriteMultichain {
      * @dev Can only be called by authorized accounts via the SOCKET Protocol
      */
     function increase() external;
-
-    /**
-     * @notice Connects the contract to the SOCKET Protocol
-     * @dev Sets up the contract for EVMx communication
-     * @param appGateway_ Address of the application gateway contract
-     * @param socket_ Address of the SOCKET Protocol contract
-     * @param switchboard_ Address of the switchboard contract
-     */
-    function connectSocket(address appGateway_, address socket_, address switchboard_) external;
 }

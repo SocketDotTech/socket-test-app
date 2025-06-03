@@ -3,7 +3,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
 import "socket-protocol/contracts/evmx/interfaces/IForwarder.sol";
-import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
+import "socket-protocol/contracts/utils/common/Constants.sol";
 import "./IReadMultichain.sol";
 import "./ReadMultichain.sol";
 
@@ -99,10 +99,10 @@ contract ReadAppGateway is AppGatewayBase {
         for (uint256 i = 0; i < numberOfRequests; i++) {
             if (i % 2 == 0) {
                 IReadMultichain(instance1_).values(i);
-                IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));
+                then(this.handleValue.selector, abi.encode(i, instance1_));
             } else {
                 IReadMultichain(instance2_).values(i);
-                IPromise(instance2_).then(this.handleValue.selector, abi.encode(i, instance2_));
+                then(this.handleValue.selector, abi.encode(i, instance2_));
             }
         }
         _setOverrides(Read.OFF, Parallel.OFF);

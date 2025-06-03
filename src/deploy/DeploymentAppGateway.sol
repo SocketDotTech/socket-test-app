@@ -106,36 +106,36 @@ contract DeploymentAppGateway is AppGatewayBase {
         // NoPlugNoInititialize checks
         _setOverrides(Read.ON);
         IDeployOnchain(noPlugNoInititializeForwarder).variable();
-        IPromise(noPlugNoInititializeForwarder).then(this.validateVariable.selector, abi.encode(0));
+        then(this.validateVariable.selector, abi.encode(0));
 
         // NoPlugInitialize checks
         IDeployOnchain(noPlugInitializeForwarder).variable();
-        IPromise(noPlugInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        then(this.validateVariable.selector, abi.encode(10));
 
         // PlugNoInitialize checks
         IDeployOnchain(plugNoInitializeForwarder).variable();
-        IPromise(plugNoInitializeForwarder).then(this.validateVariable.selector, abi.encode(0));
+        then(this.validateVariable.selector, abi.encode(0));
         IDeployOnchain(plugNoInitializeForwarder).socket__();
-        IPromise(plugNoInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
 
         // PlugInitialize checks
         IDeployOnchain(plugInitializeForwarder).variable();
-        IPromise(plugInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        then(this.validateVariable.selector, abi.encode(10));
         IDeployOnchain(plugInitializeForwarder).socket__();
-        IPromise(plugInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
 
         // PlugInitializeTwice checks
         IDeployOnchain(plugInitializeTwiceForwarder).variable();
-        IPromise(plugInitializeTwiceForwarder).then(this.validateVariable.selector, abi.encode(20));
+        then(this.validateVariable.selector, abi.encode(20));
         IDeployOnchain(plugInitializeTwiceForwarder).socket__();
-        IPromise(plugInitializeTwiceForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
 
         // PlugNoInitInitialize checks
         _setOverrides(Read.ON);
         IDeployOnchain(plugNoInitInitializeForwarder).variable();
-        IPromise(plugNoInitInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        then(this.validateVariable.selector, abi.encode(10));
         IDeployOnchain(plugNoInitInitializeForwarder).socket__();
-        IPromise(plugNoInitInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
         _setOverrides(Read.OFF);
     }
 

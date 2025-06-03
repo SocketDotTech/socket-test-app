@@ -2,6 +2,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
+import "socket-protocol/contracts/utils/common/Constants.sol";
 import "./IWriteMultichain.sol";
 import "./WriteMultichain.sol";
 
@@ -71,7 +72,7 @@ contract WriteAppGateway is AppGatewayBase {
     function triggerSequentialWrite(address instance_) public async {
         for (uint256 i = 0; i < numberOfRequests; i++) {
             IWriteMultichain(instance_).increase();
-            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
+            then(this.handleValue.selector, abi.encode(i, instance_));
         }
     }
 
@@ -84,7 +85,7 @@ contract WriteAppGateway is AppGatewayBase {
         _setOverrides(Parallel.ON);
         for (uint256 i = 0; i < numberOfRequests; i++) {
             IWriteMultichain(instance_).increase();
-            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
+            then(this.handleValue.selector, abi.encode(i, instance_));
         }
         _setOverrides(Parallel.OFF);
     }
@@ -96,11 +97,14 @@ contract WriteAppGateway is AppGatewayBase {
      * @param instance2_ Address of the second WriteMultichain instance
      */
     function triggerAltWrite(address instance1_, address instance2_) public async {
-        for (uint256 i = 0; i < 5; i++) {
-            IWriteMultichain(instance1_).increase();
-            IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));
-            IWriteMultichain(instance2_).increase();
-            IPromise(instance2_).then(this.handleValue.selector, abi.encode(i, instance2_));
+        for (uint256 i = 0; i < numberOfRequests; i++) {
+            if (i % 2 == 0) {
+                IWriteMultichain(instance1_).increase();
+                then(this.handleValue.selector, abi.encode(i, instance1_));
+            } else {
+                IWriteMultichain(instance2_).increase();
+                then(this.handleValue.selector, abi.encode(i, instance2_));
+            }
         }
     }
 

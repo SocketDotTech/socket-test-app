@@ -2,7 +2,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
 import "./ICounter.sol";
 import "./Counter.sol";
 
@@ -75,7 +74,7 @@ contract RevertAppGateway is AppGatewayBase {
         address instance = forwarderAddresses[counter][chainSlug];
         ICounter(instance).counter();
         // wrong function input parameters for a callback
-        IPromise(instance).then(this.notCorrectInputArgs.selector, abi.encode(chainSlug));
+        then(this.notCorrectInputArgs.selector, abi.encode(chainSlug));
         _setOverrides(Read.OFF, Parallel.OFF);
     }
 

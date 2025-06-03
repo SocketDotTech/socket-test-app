@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
 import "./ICounter.sol";
 
 /**
@@ -69,7 +68,7 @@ contract UploadAppGateway is AppGatewayBase {
         _setOverrides(Read.ON, Parallel.ON);
         // TODO: Remove Parallel.ON after new contract deployment to devnet
         ICounter(counterForwarder).counter();
-        IPromise(counterForwarder).then(this.handleRead.selector, abi.encode(counterForwarder));
+        then(this.handleRead.selector, abi.encode(counterForwarder));
         _setOverrides(Read.OFF, Parallel.OFF);
     }
 
