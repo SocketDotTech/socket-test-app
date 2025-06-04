@@ -64,41 +64,42 @@ export async function depositFunds(
     'function wrap(address appGateway)'
   ]);
 
-  if (balance > 0n) {
+  if (balance > AMOUNTS.DEPLOY_FEES) {
     sendTransaction(
       process.env.FEES_MANAGER as Address,
       'wrap',
       [appGateway],
       evmxChain,
       feesAbi,
-      parseEther('10')
+      AMOUNTS.DEPLOY_FEES
+    );
+  } else {
+    console.log(`Not enough EVMx balance. Depositing ${AMOUNTS.TEST_USDC} Arbitrum USDC in wei.`);
+    const erc20Abi = parseAbi([
+      'function approve(address spender, uint256 amount) external returns (bool)'
+    ]);
+
+    const walletAddress = arbChain.walletClient.account?.address;
+    if (!walletAddress) throw new Error('Wallet address not found');
+
+    // Approve USDC for FeesPlug
+    await sendTransaction(
+      process.env.ARBITRUM_USDC as Address,
+      'approve',
+      [process.env.ARBITRUM_FEES_PLUG as Address, AMOUNTS.TEST_USDC],
+      arbChain,
+      erc20Abi
+    );
+
+    // Deposit funds
+    await sendTransaction(
+      process.env.ARBITRUM_FEES_PLUG as Address,
+      'depositCreditAndNative',
+      [process.env.ARBITRUM_USDC as Address, evmxChain.walletClient.account?.address, AMOUNTS.TEST_USDC],
+      arbChain,
+      feesAbi
     );
   }
-
-  //const erc20Abi = parseAbi([
-  //  'function approve(address spender, uint256 amount) external returns (bool)'
-  //]);
-
-  //const walletAddress = arbChain.walletClient.account?.address;
-  //if (!walletAddress) throw new Error('Wallet address not found');
-
-  //// Approve USDC for FeesPlug
-  //await sendTransaction(
-  //  process.env.ARBITRUM_USDC as Address,
-  //  'approve',
-  //  [process.env.ARBITRUM_FEES_PLUG as Address, AMOUNTS.TEST_USDC],
-  //  arbChain,
-  //  erc20Abi
-  //);
-
-  //// Deposit funds
-  //await sendTransaction(
-  //  process.env.ARBITRUM_FEES_PLUG as Address,
-  //  'depositCreditAndNative',
-  //  [process.env.ARBITRUM_USDC as Address, appGateway, AMOUNTS.TEST_USDC],
-  //  arbChain,
-  //  feesPlugAbi
-  //);
 
   await checkAvailableFees(appGateway, evmxChain);
 }
@@ -123,6 +124,20 @@ export async function withdrawFunds(
     'function transferCredits(address to_, uint256 amount_) external'
   ]);
 
+  await sendTransaction(
+    appGateway,
+    'transferCredits',
+    [evmxChain.walletClient.account?.address, availableFees],
+    evmxChain,
+    abi
+  );
+
+  // TODO: Move the code below to a withdraw example as separate test that shows:
+  // - transfering credits
+  // - wraping credits
+  // - wraping natives
+  // - withdrawing to mainnet
+
   //let amountToWithdraw = availableFees - AMOUNTS.DEPLOY_FEES;
 
   //console.log(`Withdrawing ${formatEther(amountToWithdraw)} Credits - ${amountToWithdraw} wei`);
@@ -141,12 +156,4 @@ export async function withdrawFunds(
 
   //// transfer the rest to the EOA
   //availableFees = await checkAvailableFees(appGateway, evmxChain);
-
-  await sendTransaction(
-    appGateway,
-    'transferCredits',
-    [evmxChain.walletClient.account?.address, availableFees],
-    evmxChain,
-    abi
-  );
 }
