@@ -17,8 +17,8 @@ export const URLS = {
 } as const;
 
 export const AMOUNTS = {
-  DEPLOY_FEES: parseEther('10'), // 10 ETH
-  TEST_USDC: 10000000n, // 10 TEST USDC
+  DEPLOY_FEES: parseEther('1'), // 1 ETH
+  TEST_USDC: 1000000n, // 1 USDC for testing
   GAS_BUFFER: 100000000n, // 0.1 Gwei
   GAS_LIMIT: 50000000000n, // Gas limit estimate
 } as const;
