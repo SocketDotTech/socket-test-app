@@ -48,8 +48,9 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[onchainToEVMx] = abi.encodePacked(type(OnchainTrigger).creationCode);
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 
@@ -58,7 +59,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(onchainToEVMx, chainSlug_, IsPlug.YES);
     }
 
@@ -67,9 +68,8 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Sets up the validity of the deployed OnchainTrigger contract on the specified chain
      * @param chainSlug_ The identifier of the chain where the contract was deployed
      */
-    function initialize(uint32 chainSlug_) public override {
-        address onchainAddress = getOnChainAddress(onchainToEVMx, chainSlug_);
-        watcherPrecompileConfig().setIsValidPlug(chainSlug_, onchainAddress, true);
+    function initializeOnChain(uint32 chainSlug_) public override {
+        _setValidPlug(true, chainSlug_, onchainToEVMx);
     }
 
     /**
@@ -77,7 +77,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @dev Sends the current valueOnGateway to the OnchainTrigger contract on the specified chain
      * @param targetChain The identifier of the destination chain
      */
-    function updateOnchain(uint32 targetChain) public async(bytes("")) {
+    function updateOnchain(uint32 targetChain) public async {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(valueOnGateway);
     }
@@ -88,7 +88,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * The onlyWatcherPrecompile modifier ensures the function can only be called by the watcher
      * @param value Value to update from the onchain contract on AppGateway
      */
-    function callFromChain(uint256 value) external async(bytes("")) onlyWatcherPrecompile {
+    function callFromChain(uint256 value) external onlyWatcher {
         valueOnGateway += value;
     }
 
@@ -99,7 +99,7 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param value Value to update on the other OnchainTrigger contract
      * @param targetChain Chain where the value should be updated
      */
-    function propagateToChain(uint256 value, uint32 targetChain) external async(bytes("")) onlyWatcherPrecompile {
+    function propagateToChain(uint256 value, uint32 targetChain) external async onlyWatcher {
         address onchainToEVMxForwarderAddress = forwarderAddresses[onchainToEVMx][targetChain];
         IOnchainTrigger(onchainToEVMxForwarderAddress).updateFromGateway(value);
     }
@@ -112,7 +112,26 @@ contract OnchainTriggerAppGateway is AppGatewayBase {
      * @param amount_ The amount to withdraw
      * @param receiver_ The address that will receive the withdrawn fees
      */
-    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Transfers fee credits from this contract to a specified address
+     * @dev Moves a specified amount of fee credits from the current contract to the given recipient
+     * @param to_ The address to transfer credits to
+     * @param amount_ The amount of credits to transfer
+     */
+    function transferCredits(address to_, uint256 amount_) external {
+        feesManager__().transferCredits(address(this), to_, amount_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
     }
 }

@@ -11,18 +11,18 @@ import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
  */
 contract ScheduleAppGateway is AppGatewayBase {
     /**
-     * @notice Array of timeout durations in seconds
+     * @notice Array of schedule durations in seconds
      * @dev These values define the delay periods in seconds for scheduled executions
      */
-    uint256[] public timeoutsInSeconds = [1, 20, 60, 120, 600, 1200, 5000];
+    uint256[] public schedulesInSeconds = [1, 20, 60, 120, 600, 1200, 5000];
 
     /**
-     * @notice Emitted when a scheduled timeout is resolved
-     * @param index The index of the timeout in the timeoutsInSeconds array
-     * @param creationTimestamp The timestamp when the timeout was created
-     * @param executionTimestamp The timestamp when the timeout was executed
+     * @notice Emitted when a scheduled schedule is resolved
+     * @param index The index of the schedule in the schedulesInSeconds array
+     * @param creationTimestamp The timestamp when the schedule was created
+     * @param executionTimestamp The timestamp when the schedule was executed
      */
-    event TimeoutResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
+    event ScheduleResolved(uint256 index, uint256 creationTimestamp, uint256 executionTimestamp);
 
     /**
      * @notice Constructs the ScheduleAppGateway
@@ -30,7 +30,8 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for onchain operations
      */
-    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) {
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 
@@ -39,7 +40,7 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @dev This function is a placeholder for the ScheduleAppGateway since no contracts need deployment
      *      The chainSlug parameter is required by the interface but not used.
      */
-    function deployContracts(uint32) external async(bytes("")) {
+    function deployContracts(uint32) external async {
         return;
     }
 
@@ -48,29 +49,29 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @dev No initialization needed for this application, so implementation is empty.
      *      The chainSlug parameter is required by the interface but not used.
      */
-    function initialize(uint32) public pure override {
+    function initializeOnChain(uint32) public pure override {
         return;
     }
 
     /**
-     * @notice Triggers multiple timeouts with different delay periods
-     * @dev Sets up scheduled calls to resolveTimeout with various delay periods defined in timeoutsInSeconds
+     * @notice Triggers multiple schedules with different delay periods
+     * @dev Sets up scheduled calls to resolveSchedule with various delay periods defined in schedulesInSeconds
      */
-    function triggerTimeouts() public {
-        for (uint256 i = 0; i < timeoutsInSeconds.length; i++) {
-            bytes memory payload = abi.encodeWithSelector(this.resolveTimeout.selector, i, block.timestamp);
-            watcherPrecompile__().setTimeout(timeoutsInSeconds[i], payload);
+    function triggerSchedules() public async {
+        for (uint256 i = 0; i < schedulesInSeconds.length; i++) {
+            _setSchedule(schedulesInSeconds[i]);
+            then(this.resolveSchedule.selector, abi.encode(i, block.timestamp));
         }
     }
 
     /**
-     * @notice Callback function executed when a timeout is reached
-     * @dev Emits a TimeoutResolved event with timing information
-     * @param index_ The index of the timeout in the timeoutsInSeconds array
-     * @param creationTimestamp_ The timestamp when the timeout was created
+     * @notice Callback function executed when a schedule is reached
+     * @dev Emits a ScheduleResolved event with timing information
+     * @param index_ The index of the schedule in the schedulesInSeconds array
+     * @param creationTimestamp_ The timestamp when the schedule was created
      */
-    function resolveTimeout(uint256 index_, uint256 creationTimestamp_) public {
-        emit TimeoutResolved(index_, creationTimestamp_, block.timestamp);
+    function resolveSchedule(uint256 index_, uint256 creationTimestamp_) public {
+        emit ScheduleResolved(index_, creationTimestamp_, block.timestamp);
     }
 
     /**
@@ -81,7 +82,26 @@ contract ScheduleAppGateway is AppGatewayBase {
      * @param amount_ The amount to withdraw
      * @param receiver_ The address that will receive the withdrawn fees
      */
-    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Transfers fee credits from this contract to a specified address
+     * @dev Moves a specified amount of fee credits from the current contract to the given recipient
+     * @param to_ The address to transfer credits to
+     * @param amount_ The amount of credits to transfer
+     */
+    function transferCredits(address to_, uint256 amount_) external {
+        feesManager__().transferCredits(address(this), to_, amount_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
     }
 }

@@ -1,5 +1,5 @@
 // fees/manager.ts
-import { parseAbi, type Address } from 'viem';
+import { parseAbi, formatEther, type Address, parseEther } from 'viem';
 import { ChainConfig } from './types.js';
 import { COLORS, AMOUNTS, CHAIN_IDS } from './constants.js';
 import { sendTransaction } from './deployer.js';
@@ -27,7 +27,8 @@ export async function checkAvailableFees(
       }) as bigint;
 
       if (availableFees > 0n) {
-        console.log(`Funds available: ${availableFees} wei`);
+        console.log(`Funds available: ${formatEther(availableFees)} Credits - ${availableFees} wei`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return availableFees;
       }
     } catch (error) {
@@ -54,44 +55,51 @@ export async function depositFunds(
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Depositing funds${COLORS.NC}`);
 
-  const erc20Abi = parseAbi([
-    'function mint(address to, uint256 amount) external',
-    'function approve(address spender, uint256 amount) external returns (bool)'
+  const balance = await evmxChain.client.getBalance({
+    address: evmxChain.walletClient.account?.address as Address,
+  }) as bigint;
+
+  const feesAbi = parseAbi([
+    'function depositCreditAndNative(address token, address appGateway, uint256 amount) external',
+    'function wrap(address appGateway)'
   ]);
 
-  const feesPlugAbi = parseAbi([
-    'function depositToFeeAndNative(address token, address appGateway, uint256 amount) external'
-  ]);
+  if (balance > AMOUNTS.DEPLOY_FEES) {
+    sendTransaction(
+      process.env.FEES_MANAGER as Address,
+      'wrap',
+      [appGateway],
+      evmxChain,
+      feesAbi,
+      AMOUNTS.DEPLOY_FEES
+    );
+  } else {
+    console.log(`Not enough EVMx balance. Depositing ${AMOUNTS.TEST_USDC} Arbitrum USDC in wei.`);
+    const erc20Abi = parseAbi([
+      'function approve(address spender, uint256 amount) external returns (bool)'
+    ]);
 
-  const walletAddress = arbChain.walletClient.account?.address;
-  if (!walletAddress) throw new Error('Wallet address not found');
+    const walletAddress = arbChain.walletClient.account?.address;
+    if (!walletAddress) throw new Error('Wallet address not found');
 
-  // Mint test USDC
-  await sendTransaction(
-    process.env.ARBITRUM_TEST_USDC as Address,
-    'mint',
-    [walletAddress, AMOUNTS.TEST_USDC],
-    arbChain,
-    erc20Abi
-  );
+    // Approve USDC for FeesPlug
+    await sendTransaction(
+      process.env.ARBITRUM_USDC as Address,
+      'approve',
+      [process.env.ARBITRUM_FEES_PLUG as Address, AMOUNTS.TEST_USDC],
+      arbChain,
+      erc20Abi
+    );
 
-  // Approve USDC for FeesPlug
-  await sendTransaction(
-    process.env.ARBITRUM_TEST_USDC as Address,
-    'approve',
-    [process.env.ARBITRUM_FEES_PLUG as Address, AMOUNTS.TEST_USDC],
-    arbChain,
-    erc20Abi
-  );
-
-  // Deposit funds
-  await sendTransaction(
-    process.env.ARBITRUM_FEES_PLUG as Address,
-    'depositToFeeAndNative',
-    [process.env.ARBITRUM_TEST_USDC as Address, appGateway, AMOUNTS.TEST_USDC],
-    arbChain,
-    feesPlugAbi
-  );
+    // Deposit funds
+    await sendTransaction(
+      process.env.ARBITRUM_FEES_PLUG as Address,
+      'depositCreditAndNative',
+      [process.env.ARBITRUM_USDC as Address, evmxChain.walletClient.account?.address, AMOUNTS.TEST_USDC],
+      arbChain,
+      feesAbi
+    );
+  }
 
   await checkAvailableFees(appGateway, evmxChain);
 }
@@ -104,37 +112,48 @@ export async function withdrawFunds(
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Withdrawing funds${COLORS.NC}`);
 
-  const availableFees = await checkAvailableFees(appGateway, evmxChain);
+  let availableFees = await checkAvailableFees(appGateway, evmxChain);
 
   if (availableFees === 0n) {
     console.log('No available fees to withdraw.');
     return;
   }
 
-  // Get gas price and calculate withdrawal amount
-  const gasPrice = await arbChain.client.getGasPrice();
-  const estimatedGasCost = AMOUNTS.GAS_LIMIT * (gasPrice + AMOUNTS.GAS_BUFFER);
+  const abi = parseAbi([
+    'function withdrawCredits(uint32 chainId, address token, uint256 amount, address to) external',
+    'function transferCredits(address to_, uint256 amount_) external'
+  ]);
 
-  let amountToWithdraw = 0n;
-  if (availableFees > estimatedGasCost) {
-    amountToWithdraw = availableFees - estimatedGasCost;
-  }
+  await sendTransaction(
+    appGateway,
+    'transferCredits',
+    [evmxChain.walletClient.account?.address, availableFees],
+    evmxChain,
+    abi
+  );
 
-  console.log(`Withdrawing ${amountToWithdraw} wei`);
+  // TODO: Move the code below to a withdraw example as separate test that shows:
+  // - transfering credits
+  // - wraping credits
+  // - wraping natives
+  // - withdrawing to mainnet
 
-  if (amountToWithdraw > 0n) {
-    const abi = parseAbi([
-      'function withdrawFeeTokens(uint32 chainId, address token, uint256 amount, address to) external'
-    ]);
+  //let amountToWithdraw = availableFees - AMOUNTS.DEPLOY_FEES;
 
-    await sendTransaction(
-      appGateway,
-      'withdrawFeeTokens',
-      [CHAIN_IDS.ARB_SEP, process.env.ARBITRUM_TEST_USDC, amountToWithdraw, arbChain.walletClient.account?.address],
-      evmxChain,
-      abi
-    );
-  } else {
-    console.log('No funds available for withdrawal after gas cost estimation.');
-  }
+  //console.log(`Withdrawing ${formatEther(amountToWithdraw)} Credits - ${amountToWithdraw} wei`);
+
+  //if (amountToWithdraw > 0n) {
+  //  await sendTransaction(
+  //    appGateway,
+  //    'withdrawCredits',
+  //    [CHAIN_IDS.ARB_SEP, process.env.ARBITRUM_USDC, amountToWithdraw, arbChain.walletClient.account?.address],
+  //    evmxChain,
+  //    abi
+  //  );
+  //} else {
+  //  console.log('No funds available for withdrawal after gas cost estimation.');
+  //}
+
+  //// transfer the rest to the EOA
+  //availableFees = await checkAvailableFees(appGateway, evmxChain);
 }

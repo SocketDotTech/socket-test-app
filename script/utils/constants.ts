@@ -3,8 +3,13 @@ import { parseEther } from 'viem';
 
 export const CHAIN_IDS = {
   EVMX: 43,
+  // Testnets
   ARB_SEP: 421614,
   OP_SEP: 11155420,
+  // Mainnets
+  OP: 10,
+  ARB: 42161,
+  BASE: 8453,
 } as const;
 
 export const URLS = {
@@ -12,10 +17,10 @@ export const URLS = {
 } as const;
 
 export const AMOUNTS = {
-  DEPLOY_FEES: parseEther('10'), // 10 ETH
-  TEST_USDC: BigInt('100000000'), // 100 TEST USDC
-  GAS_BUFFER: BigInt('100000000'), // 0.1 Gwei
-  GAS_LIMIT: BigInt('50000000000'), // Gas limit estimate
+  DEPLOY_FEES: parseEther('1'), // 1 ETH
+  TEST_USDC: 1000000n, // 1 USDC for testing
+  GAS_BUFFER: 100000000n, // 0.1 Gwei
+  GAS_LIMIT: 50000000000n, // Gas limit estimate
 } as const;
 
 export const COLORS = {
@@ -25,4 +30,3 @@ export const COLORS = {
   RED: '\x1b[0;31m',
   NC: '\x1b[0m', // No Color
 } as const;
-

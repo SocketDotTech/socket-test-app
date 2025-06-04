@@ -1,4 +1,5 @@
 {
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "dotenv": "^16.5.0",

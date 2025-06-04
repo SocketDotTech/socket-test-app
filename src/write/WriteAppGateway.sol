@@ -14,6 +14,12 @@ import "./WriteMultichain.sol";
  */
 contract WriteAppGateway is AppGatewayBase {
     /**
+     * @notice Number of requests to call onchain
+     * @dev Used to maximize number of requests done
+     */
+    uint256 public numberOfRequests = 10;
+
+    /**
      * @notice Identifier for the WriteMultichain contract
      * @dev Used to track WriteMultichain contract instances across chains
      */
@@ -33,8 +39,9 @@ contract WriteAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[multichain] = abi.encodePacked(type(WriteMultichain).creationCode);
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 
@@ -43,7 +50,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Triggers an asynchronous multi-chain deployment via SOCKET Protocol
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(multichain, chainSlug_, IsPlug.YES);
     }
 
@@ -52,7 +59,7 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev No initialization needed for this application, so implementation is empty.
      *      The chainSlug parameter is required by the interface but not used.
      */
-    function initialize(uint32) public pure override {
+    function initializeOnChain(uint32) public pure override {
         return;
     }
 
@@ -61,10 +68,10 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Calls the increase function 10 times in sequence and processes the return values
      * @param instance_ Address of the WriteMultichain instance to write to
      */
-    function triggerSequentialWrite(address instance_) public async(bytes("")) {
-        for (uint256 i = 0; i < 10; i++) {
+    function triggerSequentialWrite(address instance_) public async {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
             IWriteMultichain(instance_).increase();
-            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
+            then(this.handleValue.selector, abi.encode(i, instance_));
         }
     }
 
@@ -73,11 +80,11 @@ contract WriteAppGateway is AppGatewayBase {
      * @dev Calls the increase function 10 times in parallel and processes the return values
      * @param instance_ Address of the WriteMultichain instance to write to
      */
-    function triggerParallelWrite(address instance_) public async(bytes("")) {
+    function triggerParallelWrite(address instance_) public async {
         _setOverrides(Parallel.ON);
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
             IWriteMultichain(instance_).increase();
-            IPromise(instance_).then(this.handleValue.selector, abi.encode(i, instance_));
+            then(this.handleValue.selector, abi.encode(i, instance_));
         }
         _setOverrides(Parallel.OFF);
     }
@@ -88,12 +95,15 @@ contract WriteAppGateway is AppGatewayBase {
      * @param instance1_ Address of the first WriteMultichain instance
      * @param instance2_ Address of the second WriteMultichain instance
      */
-    function triggerAltWrite(address instance1_, address instance2_) public async(bytes("")) {
-        for (uint256 i = 0; i < 5; i++) {
-            IWriteMultichain(instance1_).increase();
-            IPromise(instance1_).then(this.handleValue.selector, abi.encode(i, instance1_));
-            IWriteMultichain(instance2_).increase();
-            IPromise(instance2_).then(this.handleValue.selector, abi.encode(i, instance2_));
+    function triggerAltWrite(address instance1_, address instance2_) public async {
+        for (uint256 i = 0; i < numberOfRequests; i++) {
+            if (i % 2 == 0) {
+                IWriteMultichain(instance1_).increase();
+                then(this.handleValue.selector, abi.encode(i, instance1_));
+            } else {
+                IWriteMultichain(instance2_).increase();
+                then(this.handleValue.selector, abi.encode(i, instance2_));
+            }
         }
     }
 
@@ -117,8 +127,18 @@ contract WriteAppGateway is AppGatewayBase {
      * @param amount_ The amount to withdraw
      * @param receiver_ The address that will receive the withdrawn fees
      */
-    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Transfers fee credits from this contract to a specified address
+     * @dev Moves a specified amount of fee credits from the current contract to the given recipient
+     * @param to_ The address to transfer credits to
+     * @param amount_ The amount of credits to transfer
+     */
+    function transferCredits(address to_, uint256 amount_) external {
+        feesManager__().transferCredits(address(this), to_, amount_);
     }
 
     /**

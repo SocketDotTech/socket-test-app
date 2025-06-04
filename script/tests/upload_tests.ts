@@ -54,7 +54,7 @@ export async function runUploadTests(
     uploadAbi
   );
 
-  await awaitEvents(1, 'ReadOnchain(address,uint256)', appGateway, evmxChain);
+  await awaitEvents(1n, 'ReadOnchain(address,uint256)', appGateway, evmxChain);
 }
 
 export async function executeUploadTests(

@@ -1,6 +1,6 @@
-import { setupClients } from './utils/client-setup.js';
+import { getAvailableChains } from './utils/client-setup.js';
 import { buildContracts } from './utils/deployer.js';
-import { ChainConfig, TestFlags } from './utils/types.js';
+import { TestFlags } from './utils/types.js';
 import { COLORS } from './utils/constants.js';
 
 // Import test modules
@@ -11,19 +11,6 @@ import { executeUploadTests } from './tests/upload_tests.js';
 import { executeSchedulerTests } from './tests/scheduler_tests.js';
 import { executeInsufficientFeesTests } from './tests/insufficient_tests.js';
 import { executeRevertTests } from './tests/revert_tests.js';
-
-// Global chain configurations
-let evmxChain: ChainConfig;
-let arbChain: ChainConfig;
-let opChain: ChainConfig;
-
-// Initialize chains
-function initializeChains(): void {
-  const chains = setupClients();
-  evmxChain = chains.evmxChain;
-  arbChain = chains.arbChain;
-  opChain = chains.opChain;
-}
 
 // Help function
 function showHelp(): void {
@@ -59,7 +46,7 @@ function parseFlags(args: string[]): TestFlags {
 async function main(): Promise<void> {
   try {
     await buildContracts();
-    initializeChains();
+    const chains = getAvailableChains();
 
     // Parse command line arguments
     const args = process.argv.slice(2);
@@ -72,31 +59,31 @@ async function main(): Promise<void> {
 
     // Execute tests based on flags
     if (flags.write) {
-      await executeWriteTests(evmxChain, arbChain);
+      await executeWriteTests(chains.evmxChain, chains.arbChain);
     }
 
     if (flags.read) {
-      await executeReadTests(evmxChain, arbChain);
+      await executeReadTests(chains.evmxChain, chains.arbChain);
     }
 
     if (flags.trigger) {
-      await executeTriggerTests(evmxChain, arbChain, opChain);
+      await executeTriggerTests(chains.evmxChain, chains.arbChain, chains.opChain);
     }
 
     if (flags.upload) {
-      await executeUploadTests(evmxChain, arbChain);
+      await executeUploadTests(chains.evmxChain, chains.arbChain);
     }
 
     if (flags.scheduler) {
-      await executeSchedulerTests(evmxChain, arbChain);
+      await executeSchedulerTests(chains.evmxChain, chains.arbChain);
     }
 
     if (flags.insufficient) {
-      await executeInsufficientFeesTests(evmxChain, arbChain);
+      await executeInsufficientFeesTests(chains.evmxChain, chains.arbChain);
     }
 
     if (flags.revert) {
-      await executeRevertTests(evmxChain, arbChain);
+      await executeRevertTests(chains.evmxChain, chains.arbChain);
     }
 
     console.log(`${COLORS.GREEN}All selected tests completed successfully!${COLORS.NC}`);
@@ -106,14 +93,6 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 }
-
-// Export the setup for external use
-export {
-  initializeChains,
-  evmxChain,
-  arbChain,
-  opChain
-};
 
 // Run main if this is the main module
 if (import.meta.url === `file://${process.argv[1]}`) {

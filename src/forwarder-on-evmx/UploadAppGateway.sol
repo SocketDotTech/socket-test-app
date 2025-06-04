@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "socket-protocol/contracts/evmx/base/AppGatewayBase.sol";
-import "socket-protocol/contracts/evmx/interfaces/IPromise.sol";
 import "./ICounter.sol";
 
 /**
@@ -31,7 +30,8 @@ contract UploadAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) {
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 
@@ -40,14 +40,14 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Required by AppGatewayBase but not used in this implementation
      * @param chainSlug_ The identifier of the target chain (unused)
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {}
+    function deployContracts(uint32 chainSlug_) external async {}
 
     /**
      * @notice Empty initialization function as no post-deployment setup is needed
      * @dev Required by AppGatewayBase but not used in this implementation
      * @param chainSlug_ The identifier of the chain (unused)
      */
-    function initialize(uint32 chainSlug_) public override {}
+    function initializeOnChain(uint32 chainSlug_) public override {}
 
     /**
      * @notice Uploads an existing onchain contract to EVMx
@@ -56,7 +56,7 @@ contract UploadAppGateway is AppGatewayBase {
      * @param chainSlug_ The identifier of the chain where the contract exists
      */
     function uploadToEVMx(address onchainContract, uint32 chainSlug_) public {
-        counterForwarder = addressResolver__.getOrDeployForwarderContract(address(this), onchainContract, chainSlug_);
+        counterForwarder = asyncDeployer__().getOrDeployForwarderContract(onchainContract, chainSlug_);
     }
 
     /**
@@ -64,12 +64,11 @@ contract UploadAppGateway is AppGatewayBase {
      * @dev Initiates an asynchronous read operation with parallel execution enabled
      * Sets up a promise to handle the read result via the handleRead function
      */
-    function read() public async(bytes("")) {
-        _setOverrides(Read.ON, Parallel.ON);
-        // TODO: Remove Parallel.ON after new contract deployment to devnet
+    function read() public async {
+        _setOverrides(Read.ON);
         ICounter(counterForwarder).counter();
-        IPromise(counterForwarder).then(this.handleRead.selector, abi.encode(counterForwarder));
-        _setOverrides(Read.OFF, Parallel.OFF);
+        then(this.handleRead.selector, abi.encode(counterForwarder));
+        _setOverrides(Read.OFF);
     }
 
     /**
@@ -94,7 +93,26 @@ contract UploadAppGateway is AppGatewayBase {
      * @param amount_ The amount to withdraw
      * @param receiver_ The address that will receive the withdrawn fees
      */
-    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Transfers fee credits from this contract to a specified address
+     * @dev Moves a specified amount of fee credits from the current contract to the given recipient
+     * @param to_ The address to transfer credits to
+     * @param amount_ The amount of credits to transfer
+     */
+    function transferCredits(address to_, uint256 amount_) external {
+        feesManager__().transferCredits(address(this), to_, amount_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
     }
 }

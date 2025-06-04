@@ -80,22 +80,23 @@ export async function fetchForwarderAndOnchainAddress(
   console.log(`Forwarder: ${forwarder}`);
   console.log(`Onchain:   ${onchain}`);
 
+  await new Promise(resolve => setTimeout(resolve, 1000));
   return { forwarder, onchain };
 }
 
 // Await events function
 export async function awaitEvents(
-  expectedNewEvents: number,
+  expectedNewEvents: bigint,
   _eventSignature: string,
   appGateway: Address,
   evmxChain: ChainConfig,
-  timeout: number = 180
+  timeout: number = 300
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Waiting logs for ${expectedNewEvents} new events (up to ${timeout} seconds)...${COLORS.NC}`);
 
   const interval: number = 2000; // 2 seconds
   let elapsed: number = 0;
-  let eventCount: number = 0;
+  let eventCount = 0n;
 
   while (elapsed <= timeout * 1000) {
     try {

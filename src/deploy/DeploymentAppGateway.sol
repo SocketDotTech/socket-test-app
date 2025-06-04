@@ -48,13 +48,14 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @param addressResolver_ Address of the SOCKET Protocol's AddressResolver contract
      * @param fees_ Fee configuration for multi-chain operations
      */
-    constructor(address addressResolver_, uint256 fees_) AppGatewayBase(addressResolver_) {
+    constructor(address addressResolver_, uint256 fees_) {
         creationCodeWithArgs[noPlugNoInititialize] = abi.encodePacked(type(NoPlugNoInititialize).creationCode);
         creationCodeWithArgs[noPlugInitialize] = abi.encodePacked(type(NoPlugInitialize).creationCode);
         creationCodeWithArgs[plugNoInitialize] = abi.encodePacked(type(PlugNoInitialize).creationCode);
         creationCodeWithArgs[plugInitialize] = abi.encodePacked(type(PlugInitialize).creationCode);
         creationCodeWithArgs[plugInitializeTwice] = abi.encodePacked(type(PlugInitializeTwice).creationCode);
         creationCodeWithArgs[plugNoInitInitialize] = abi.encodePacked(type(PlugNoInitInitialize).creationCode);
+        _initializeAppGateway(addressResolver_);
         _setMaxFees(fees_);
     }
 
@@ -63,7 +64,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Triggers asynchronous multi-chain deployments with different initialization scenarios
      * @param chainSlug_ The identifier of the target chain
      */
-    function deployContracts(uint32 chainSlug_) external async(bytes("")) {
+    function deployContracts(uint32 chainSlug_) external async {
         _deploy(noPlugNoInititialize, chainSlug_, IsPlug.NO);
         _deploy(
             noPlugInitialize, chainSlug_, IsPlug.NO, abi.encodeWithSelector(NoPlugInitialize.initialise.selector, 10)
@@ -84,7 +85,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Calls initialize functions on specific contracts after deployment
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function initialize(uint32 chainSlug_) public override async(bytes("")) {
+    function initializeOnChain(uint32 chainSlug_) public override async {
         PlugInitializeTwice(forwarderAddresses[plugInitializeTwice][chainSlug_]).initialise(10);
         PlugNoInitInitialize(forwarderAddresses[plugNoInitInitialize][chainSlug_]).initialise(10);
     }
@@ -94,7 +95,7 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @dev Performs checks on each contract type to ensure proper initialization and functionality
      * @param chainSlug_ The identifier of the chain where contracts were deployed
      */
-    function contractValidation(uint32 chainSlug_) external async(bytes("")) {
+    function contractValidation(uint32 chainSlug_) external async {
         address noPlugNoInititializeForwarder = forwarderAddresses[noPlugNoInititialize][chainSlug_];
         address noPlugInitializeForwarder = forwarderAddresses[noPlugInitialize][chainSlug_];
         address plugNoInitializeForwarder = forwarderAddresses[plugNoInitialize][chainSlug_];
@@ -105,36 +106,36 @@ contract DeploymentAppGateway is AppGatewayBase {
         // NoPlugNoInititialize checks
         _setOverrides(Read.ON);
         IDeployOnchain(noPlugNoInititializeForwarder).variable();
-        IPromise(noPlugNoInititializeForwarder).then(this.validateVariable.selector, abi.encode(0));
+        then(this.validateVariable.selector, abi.encode(0));
 
         // NoPlugInitialize checks
         IDeployOnchain(noPlugInitializeForwarder).variable();
-        IPromise(noPlugInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        then(this.validateVariable.selector, abi.encode(10));
 
         // PlugNoInitialize checks
         IDeployOnchain(plugNoInitializeForwarder).variable();
-        IPromise(plugNoInitializeForwarder).then(this.validateVariable.selector, abi.encode(0));
+        then(this.validateVariable.selector, abi.encode(0));
         IDeployOnchain(plugNoInitializeForwarder).socket__();
-        IPromise(plugNoInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
 
         // PlugInitialize checks
         IDeployOnchain(plugInitializeForwarder).variable();
-        IPromise(plugInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        then(this.validateVariable.selector, abi.encode(10));
         IDeployOnchain(plugInitializeForwarder).socket__();
-        IPromise(plugInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
 
         // PlugInitializeTwice checks
         IDeployOnchain(plugInitializeTwiceForwarder).variable();
-        IPromise(plugInitializeTwiceForwarder).then(this.validateVariable.selector, abi.encode(20));
+        then(this.validateVariable.selector, abi.encode(20));
         IDeployOnchain(plugInitializeTwiceForwarder).socket__();
-        IPromise(plugInitializeTwiceForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
 
         // PlugNoInitInitialize checks
         _setOverrides(Read.ON);
         IDeployOnchain(plugNoInitInitializeForwarder).variable();
-        IPromise(plugNoInitInitializeForwarder).then(this.validateVariable.selector, abi.encode(10));
+        then(this.validateVariable.selector, abi.encode(10));
         IDeployOnchain(plugNoInitInitializeForwarder).socket__();
-        IPromise(plugNoInitInitializeForwarder).then(this.validateSocket.selector, abi.encode(0));
+        then(this.validateSocket.selector, abi.encode(0));
         _setOverrides(Read.OFF);
     }
 
@@ -170,7 +171,26 @@ contract DeploymentAppGateway is AppGatewayBase {
      * @param amount_ The amount to withdraw
      * @param receiver_ The address that will receive the withdrawn fees
      */
-    function withdrawFeeTokens(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
-        _withdrawFeeTokens(chainSlug_, token_, amount_, receiver_);
+    function withdrawCredits(uint32 chainSlug_, address token_, uint256 amount_, address receiver_) external {
+        _withdrawCredits(chainSlug_, token_, amount_, receiver_);
+    }
+
+    /**
+     * @notice Transfers fee credits from this contract to a specified address
+     * @dev Moves a specified amount of fee credits from the current contract to the given recipient
+     * @param to_ The address to transfer credits to
+     * @param amount_ The amount of credits to transfer
+     */
+    function transferCredits(address to_, uint256 amount_) external {
+        feesManager__().transferCredits(address(this), to_, amount_);
+    }
+
+    /**
+     * @notice Updates the fee max value
+     * @dev Allows modification of fee settings for multi-chain operations
+     * @param fees_ New fee configuration
+     */
+    function setMaxFees(uint256 fees_) public {
+        maxFees = fees_;
     }
 }

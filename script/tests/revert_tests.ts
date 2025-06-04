@@ -35,37 +35,34 @@ export async function runRevertTests(
     abi
   );
 
-  console.log(`${COLORS.CYAN}Waiting for transaction finalization${COLORS.NC}`);
+  console.log(`${COLORS.CYAN}Waiting for transaction proof${COLORS.NC}`);
   let attempt = 0;
   let status = '';
 
+  let execStatus;
   while (true) {
     const response = await getTxDetails(endpoint, hash1);
-    status = response?.response?.[0]?.writePayloads?.[0]?.finalizeDetails?.finalizeStatus;
+    status = response?.response?.[0]?.writePayloads?.[0]?.proofUploadDetails?.proofUploadStatus;
 
-    if (status === 'FINALIZED') {
-      if (attempt > 0) process.stdout.write('\r\x1b[2K');
-      break;
+    if (status === 'PROOF_UPLOADED') {
+      execStatus = response?.response?.[0]?.writePayloads?.[0]?.executeDetails?.executeStatus;
+      if (execStatus === 'EXECUTION_FAILED') {
+        console.log(`Execution status is EXECUTION_FAILED as expected`);
+        if (attempt > 0) process.stdout.write('\r\x1b[2K');
+        break;
+      }
     }
 
     if (attempt >= maxAttempts) {
       console.log();
-      throw new Error(`Transaction not finalized after ${maxSeconds} seconds. Current status: ${status}`);
+      throw new Error(`Could not validate failed execution after ${maxSeconds} seconds. Current status: ${status}`);
     }
 
     const elapsed = attempt * interval / 1000;
-    process.stdout.write(`\r${COLORS.YELLOW}Waiting for finalization:${COLORS.NC} ${elapsed}s / ${maxSeconds}s`);
+    process.stdout.write(`\r${COLORS.YELLOW}Waiting for failed execution:${COLORS.NC} ${elapsed}s / ${maxSeconds}s`);
 
     await new Promise(resolve => setTimeout(resolve, interval));
     attempt++;
-  }
-
-  const execStatus = (await getTxDetails(endpoint, hash1))?.response?.[0]?.writePayloads?.[0]?.executeDetails?.executeStatus;
-
-  if (execStatus === 'EXECUTION_FAILED') {
-    console.log(`Execution status is EXECUTION_FAILED as expected`);
-  } else {
-    throw new Error(`Execution status is not EXECUTION_FAILED, it is: ${execStatus}`);
   }
 
   // Send callback revert transaction
