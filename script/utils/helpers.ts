@@ -80,6 +80,7 @@ export async function fetchForwarderAndOnchainAddress(
   console.log(`Forwarder: ${forwarder}`);
   console.log(`Onchain:   ${onchain}`);
 
+  await new Promise(resolve => setTimeout(resolve, 1000));
   return { forwarder, onchain };
 }
 
