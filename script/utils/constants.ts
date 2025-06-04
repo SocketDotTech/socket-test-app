@@ -3,8 +3,13 @@ import { parseEther } from 'viem';
 
 export const CHAIN_IDS = {
   EVMX: 43,
+  // Testnets
   ARB_SEP: 421614,
   OP_SEP: 11155420,
+  // Mainnets
+  OP: 10,
+  ARB: 42161,
+  BASE: 8453,
 } as const;
 
 export const URLS = {
