@@ -141,8 +141,20 @@ export async function getTxDetails(endpoint: string, txHash: string): Promise<an
   }
 }
 
-// Progress bar utility
-export function showProgressBar(current: number, total: number, message: string): void {
-  const percent = Math.floor((current * 100) / total);
-  process.stdout.write(`\r${COLORS.YELLOW}${message}:${COLORS.NC} ${percent}%`);
+// Randomize chain selection
+export function selectRandomChains(
+  chains: Record<string, ChainConfig>,
+  count: number
+): ChainConfig[] {
+  const { evmxChain, ...rest } = chains;
+
+  const available = Object.values(rest);
+  const selected: ChainConfig[] = [];
+
+  for (let i = 0; i < Math.min(count, available.length); i++) {
+    const randomIndex = Math.floor(Math.random() * available.length);
+    selected.push(available.splice(randomIndex, 1)[0]);
+  }
+
+  return selected;
 }

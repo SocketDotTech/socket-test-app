@@ -1,7 +1,7 @@
 import { parseAbi, type Address } from 'viem';
 import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
-import { awaitEvents, fetchForwarderAndOnchainAddress } from '../utils/helpers.js';
+import { awaitEvents, fetchForwarderAndOnchainAddress, selectRandomChains } from '../utils/helpers.js';
 import { ContractAddresses, ChainConfig } from '../utils/types.js';
 import { COLORS, CHAIN_IDS } from '../utils/constants.js';
 
@@ -62,27 +62,30 @@ export async function runWriteTests(
 }
 
 export async function executeWriteTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Write Tests ===${COLORS.NC}`);
 
   const addresses: ContractAddresses = {
-    appGateway: await deployAppGateway('WriteAppGateway', evmxChain)
+    appGateway: await deployAppGateway('WriteAppGateway', chains.evmxChain)
   };
 
-  await depositFunds(addresses.appGateway, arbChain, evmxChain);
-  await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
-  await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  await depositFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 
-  const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+  // Selects two random chains out of the available ones
+  const randomChains = selectRandomChains(chains, 2);
+
+  await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+  await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+
+  const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
   addresses.arbForwarder = arbAddresses.forwarder;
   addresses.arbOnchain = arbAddresses.onchain;
 
-  const opAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  const opAddresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
   addresses.opForwarder = opAddresses.forwarder;
   addresses.opOnchain = opAddresses.onchain;
 
-  await runWriteTests(addresses, evmxChain);
-  await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
+  await runWriteTests(addresses, chains.evmxChain);
+  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 }

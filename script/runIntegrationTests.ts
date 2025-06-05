@@ -59,31 +59,31 @@ async function main(): Promise<void> {
 
     // Execute tests based on flags
     if (flags.write) {
-      await executeWriteTests(chains.evmxChain, chains.arbChain);
+      await executeWriteTests(chains);
     }
 
     if (flags.read) {
-      await executeReadTests(chains.evmxChain, chains.arbChain);
+      await executeReadTests(chains);
     }
 
     if (flags.trigger) {
-      await executeTriggerTests(chains.evmxChain, chains.arbChain, chains.opChain);
+      await executeTriggerTests(chains);
     }
 
     if (flags.upload) {
-      await executeUploadTests(chains.evmxChain, chains.arbChain);
+      await executeUploadTests(chains);
     }
 
     if (flags.scheduler) {
-      await executeSchedulerTests(chains.evmxChain, chains.arbChain);
+      await executeSchedulerTests(chains);
     }
 
     if (flags.insufficient) {
-      await executeInsufficientFeesTests(chains.evmxChain, chains.arbChain);
+      await executeInsufficientFeesTests(chains);
     }
 
     if (flags.revert) {
-      await executeRevertTests(chains.evmxChain, chains.arbChain);
+      await executeRevertTests(chains);
     }
 
     console.log(`${COLORS.GREEN}All selected tests completed successfully!${COLORS.NC}`);
