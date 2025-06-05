@@ -3,7 +3,7 @@ import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deplo
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
 import { awaitEvents, fetchForwarderAndOnchainAddress, selectRandomChains } from '../utils/helpers.js';
 import { ContractAddresses, ChainConfig } from '../utils/types.js';
-import { COLORS, CHAIN_IDS } from '../utils/constants.js';
+import { COLORS } from '../utils/constants.js';
 
 // Write tests
 export async function runWriteTests(
@@ -19,7 +19,7 @@ export async function runWriteTests(
     'function triggerAltWrite(address forwarder1, address forwarder2) external'
   ]);
 
-  if (!addresses.appGateway || !addresses.opForwarder || !addresses.arbForwarder) {
+  if (!addresses.appGateway || !addresses.chain2Forwarder || !addresses.chain1Forwarder) {
     throw new Error('Required addresses not found');
   }
 
@@ -34,7 +34,7 @@ export async function runWriteTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerSequentialWrite',
-    [addresses.opForwarder],
+    [addresses.chain2Forwarder],
     evmxChain,
     abi
   );
@@ -44,7 +44,7 @@ export async function runWriteTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerParallelWrite',
-    [addresses.arbForwarder],
+    [addresses.chain1Forwarder],
     evmxChain,
     abi
   );
@@ -54,7 +54,7 @@ export async function runWriteTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerAltWrite',
-    [addresses.opForwarder, addresses.arbForwarder],
+    [addresses.chain2Forwarder, addresses.chain1Forwarder],
     evmxChain,
     abi
   );
@@ -78,13 +78,13 @@ export async function executeWriteTests(
   await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
   await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
 
-  const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.arbForwarder = arbAddresses.forwarder;
-  addresses.arbOnchain = arbAddresses.onchain;
+  const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+  addresses.chain1Forwarder = chain1Addresses.forwarder;
+  addresses.chain1Onchain = chain1Addresses.onchain;
 
-  const opAddresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.opForwarder = opAddresses.forwarder;
-  addresses.opOnchain = opAddresses.onchain;
+  const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+  addresses.chain2Forwarder = chain2Addresses.forwarder;
+  addresses.chain2Onchain = chain2Addresses.onchain;
 
   await runWriteTests(addresses, chains.evmxChain);
   await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);

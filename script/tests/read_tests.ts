@@ -18,7 +18,7 @@ export async function runReadTests(
     'function triggerAltRead(address forwarder1, address forwarder2) external'
   ]);
 
-  if (!addresses.appGateway || !addresses.opForwarder || !addresses.arbForwarder) {
+  if (!addresses.appGateway || !addresses.chain2Forwarder || !addresses.chain1Forwarder) {
     throw new Error('Required addresses not found');
   }
 
@@ -32,7 +32,7 @@ export async function runReadTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerParallelRead',
-    [addresses.arbForwarder],
+    [addresses.chain1Forwarder],
     evmxChain,
     abi
   );
@@ -42,7 +42,7 @@ export async function runReadTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerAltRead',
-    [addresses.opForwarder, addresses.arbForwarder],
+    [addresses.chain2Forwarder, addresses.chain1Forwarder],
     evmxChain,
     abi
   );
@@ -63,13 +63,13 @@ export async function executeReadTests(
   await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
   await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-  const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
-  addresses.arbForwarder = arbAddresses.forwarder;
-  addresses.arbOnchain = arbAddresses.onchain;
+  const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+  addresses.chain1Forwarder = chain1Addresses.forwarder;
+  addresses.chain1Onchain = chain1Addresses.onchain;
 
-  const opAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
-  addresses.opForwarder = opAddresses.forwarder;
-  addresses.opOnchain = opAddresses.onchain;
+  const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  addresses.chain2Forwarder = chain2Addresses.forwarder;
+  addresses.chain2Onchain = chain2Addresses.onchain;
 
   await runReadTests(addresses, evmxChain);
   await withdrawFunds(addresses.appGateway, arbChain, evmxChain);

@@ -116,9 +116,9 @@ export async function executeRevertTests(
   await depositFunds(addresses.appGateway, arbChain, evmxChain);
   await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-  const opAddresses = await fetchForwarderAndOnchainAddress('counter', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
-  addresses.opForwarder = opAddresses.forwarder;
-  addresses.opOnchain = opAddresses.onchain;
+  const chain2Addresses = await fetchForwarderAndOnchainAddress('counter', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  addresses.chain2Forwarder = chain2Addresses.forwarder;
+  addresses.chain2Onchain = chain2Addresses.onchain;
 
   await runRevertTests(addresses, evmxChain);
   await withdrawFunds(addresses.appGateway, arbChain, evmxChain);

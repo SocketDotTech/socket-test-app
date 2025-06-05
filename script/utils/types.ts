@@ -10,10 +10,10 @@ export interface ChainConfig {
 
 export interface ContractAddresses {
   appGateway: Address;
-  arbForwarder?: Address;
-  arbOnchain?: Address;
-  opForwarder?: Address;
-  opOnchain?: Address;
+  chain1Forwarder?: Address;
+  chain1Onchain?: Address;
+  chain2Forwarder?: Address;
+  chain2Onchain?: Address;
 }
 
 export interface TestFlags {

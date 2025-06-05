@@ -14,7 +14,7 @@ export async function runTriggerAppGatewayOnchainTests(
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Running all trigger the AppGateway from onchain tests functions...${COLORS.NC}`);
 
-  if (!addresses.appGateway || !addresses.arbOnchain || !addresses.opOnchain) {
+  if (!addresses.appGateway || !addresses.chain1Onchain || !addresses.chain2Onchain) {
     throw new Error('Required addresses not found');
   }
 
@@ -28,7 +28,7 @@ export async function runTriggerAppGatewayOnchainTests(
   ]);
 
   await sendTransaction(
-    addresses.arbOnchain,
+    addresses.chain1Onchain,
     'increaseOnGateway',
     [valueIncrease],
     arbChain,
@@ -73,7 +73,7 @@ export async function runTriggerAppGatewayOnchainTests(
   ]);
 
   const valueOnOp = await opChain.client.readContract({
-    address: addresses.opOnchain,
+    address: addresses.chain2Onchain,
     abi: onchainReadAbi,
     functionName: 'value'
   }) as bigint;
@@ -86,7 +86,7 @@ export async function runTriggerAppGatewayOnchainTests(
   console.log(`${COLORS.CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${COLORS.NC}`);
 
   await sendTransaction(
-    addresses.opOnchain,
+    addresses.chain2Onchain,
     'propagateToAnother',
     [CHAIN_IDS.ARB_SEP],
     opChain,
@@ -97,7 +97,7 @@ export async function runTriggerAppGatewayOnchainTests(
   await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
 
   const valueOnArb = await arbChain.client.readContract({
-    address: addresses.arbOnchain,
+    address: addresses.chain1Onchain,
     abi: onchainReadAbi,
     functionName: 'value'
   }) as bigint;
@@ -124,13 +124,13 @@ export async function executeTriggerTests(
   await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
   await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
 
-  const arbAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
-  addresses.arbForwarder = arbAddresses.forwarder;
-  addresses.arbOnchain = arbAddresses.onchain;
+  const chain1Addresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+  addresses.chain1Forwarder = chain1Addresses.forwarder;
+  addresses.chain1Onchain = chain1Addresses.onchain;
 
-  const opAddresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
-  addresses.opForwarder = opAddresses.forwarder;
-  addresses.opOnchain = opAddresses.onchain;
+  const chain2Addresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  addresses.chain2Forwarder = chain2Addresses.forwarder;
+  addresses.chain2Onchain = chain2Addresses.onchain;
 
   await runTriggerAppGatewayOnchainTests(addresses, evmxChain, arbChain, opChain);
   await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
