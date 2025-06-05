@@ -1,16 +1,15 @@
 import { parseAbi, type Address } from 'viem';
 import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
-import { fetchForwarderAndOnchainAddress } from '../utils/helpers.js';
+import { fetchForwarderAndOnchainAddress, selectRandomChains } from '../utils/helpers.js';
 import { ContractAddresses, ChainConfig } from '../utils/types.js';
-import { COLORS, CHAIN_IDS } from '../utils/constants.js';
+import { COLORS } from '../utils/constants.js';
 
 // Trigger AppGateway from onchain tests
 export async function runTriggerAppGatewayOnchainTests(
   addresses: ContractAddresses,
   evmxChain: ChainConfig,
-  arbChain: ChainConfig,
-  opChain: ChainConfig
+  selectedChains: ChainConfig[]
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Running all trigger the AppGateway from onchain tests functions...${COLORS.NC}`);
 
@@ -19,9 +18,11 @@ export async function runTriggerAppGatewayOnchainTests(
   }
 
   const valueIncrease = BigInt(5);
+  const chain1 = selectedChains[0];
+  const chain2 = selectedChains[1];
 
-  // 1. Increase on AppGateway from Arbitrum Sepolia
-  console.log(`${COLORS.CYAN}Increase on AppGateway from Arbitrum Sepolia${COLORS.NC}`);
+  // 1. Increase on AppGateway from first selected chain
+  console.log(`${COLORS.CYAN}Increase on AppGateway from ${chain1.chainId}${COLORS.NC}`);
 
   const onchainAbi = parseAbi([
     'function increaseOnGateway(uint256) external'
@@ -31,7 +32,7 @@ export async function runTriggerAppGatewayOnchainTests(
     addresses.chain1Onchain,
     'increaseOnGateway',
     [valueIncrease],
-    arbChain,
+    chain1,
     onchainAbi
   );
 
@@ -53,18 +54,18 @@ export async function runTriggerAppGatewayOnchainTests(
     throw new Error(`Got ${valueOnGateway} but expected at least ${valueIncrease}`);
   }
 
-  // 2. Update on Optimism Sepolia from AppGateway
-  console.log(`${COLORS.CYAN}Update on Optimism Sepolia from AppGateway${COLORS.NC}`);
+  // 2. Update on second selected chain from AppGateway
+  console.log(`${COLORS.CYAN}Update on ${chain2.chainId} from AppGateway${COLORS.NC}`);
 
   await sendTransaction(
     addresses.appGateway,
     'updateOnchain',
-    [CHAIN_IDS.OP_SEP],
+    [chain2.chainId],
     evmxChain,
     appGatewayAbi
   );
 
-  // Wait and verify value on Optimism
+  // Wait and verify value on second chain
   await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
 
   const onchainReadAbi = parseAbi([
@@ -72,66 +73,68 @@ export async function runTriggerAppGatewayOnchainTests(
     'function propagateToAnother(uint32) external'
   ]);
 
-  const valueOnOp = await opChain.client.readContract({
+  const valueOnChain2 = await chain2.client.readContract({
     address: addresses.chain2Onchain,
     abi: onchainReadAbi,
     functionName: 'value'
   }) as bigint;
 
-  if (valueOnOp !== valueOnGateway) {
-    throw new Error(`Got ${valueOnOp} but expected ${valueOnGateway}`);
+  if (valueOnChain2 !== valueOnGateway) {
+    throw new Error(`Got ${valueOnChain2} but expected ${valueOnGateway}`);
   }
 
-  // 3. Propagate update from Optimism Sepolia to Arbitrum Sepolia
-  console.log(`${COLORS.CYAN}Propagate update to Optimism Sepolia to Arbitrum Sepolia from AppGateway${COLORS.NC}`);
+  // 3. Propagate update from second chain to first chain
+  console.log(`${COLORS.CYAN}Propagate update from ${chain2.chainId} to ${chain1.chainId} via AppGateway${COLORS.NC}`);
 
   await sendTransaction(
     addresses.chain2Onchain,
     'propagateToAnother',
-    [CHAIN_IDS.ARB_SEP],
-    opChain,
+    [chain1.chainId],
+    chain2,
     onchainReadAbi
   );
 
-  // Wait and verify value on Arbitrum
+  // Wait and verify value on first chain
   await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
 
-  const valueOnArb = await arbChain.client.readContract({
+  const valueOnChain1 = await chain1.client.readContract({
     address: addresses.chain1Onchain,
     abi: onchainReadAbi,
     functionName: 'value'
   }) as bigint;
 
-  if (valueOnArb !== valueOnOp) {
-    throw new Error(`Got ${valueOnArb} but expected ${valueOnOp}`);
+  if (valueOnChain1 !== valueOnChain2) {
+    throw new Error(`Got ${valueOnChain1} but expected ${valueOnChain2}`);
   }
 
   console.log(`${COLORS.GREEN}All trigger tests completed successfully!${COLORS.NC}`);
 }
 
 export async function executeTriggerTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig,
-  opChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Trigger from onchain Tests ===${COLORS.NC}`);
 
   const addresses: ContractAddresses = {
-    appGateway: await deployAppGateway('OnchainTriggerAppGateway', evmxChain)
+    appGateway: await deployAppGateway('OnchainTriggerAppGateway', chains.evmxChain)
   };
 
-  await depositFunds(addresses.appGateway, arbChain, evmxChain);
-  await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
-  await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  await depositFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 
-  const chain1Addresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
+  // Selects two random chains out of the available ones
+  const randomChains = selectRandomChains(chains, 2);
+
+  await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+  await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+
+  const chain1Addresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
   addresses.chain1Forwarder = chain1Addresses.forwarder;
   addresses.chain1Onchain = chain1Addresses.onchain;
 
-  const chain2Addresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  const chain2Addresses = await fetchForwarderAndOnchainAddress('onchainToEVMx', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
   addresses.chain2Forwarder = chain2Addresses.forwarder;
   addresses.chain2Onchain = chain2Addresses.onchain;
 
-  await runTriggerAppGatewayOnchainTests(addresses, evmxChain, arbChain, opChain);
-  await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
+  await runTriggerAppGatewayOnchainTests(addresses, chains.evmxChain, randomChains);
+  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 }

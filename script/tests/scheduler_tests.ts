@@ -78,14 +78,13 @@ export async function runSchedulerTests(
 }
 
 export async function executeSchedulerTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Scheduler Tests ===${COLORS.NC}`);
 
-  const appGateway = await deployAppGateway('ScheduleAppGateway', evmxChain);
+  const appGateway = await deployAppGateway('ScheduleAppGateway', chains.evmxChain);
 
-  await depositFunds(appGateway, arbChain, evmxChain);
-  await runSchedulerTests(appGateway, evmxChain);
-  await withdrawFunds(appGateway, arbChain, evmxChain);
+  await depositFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  await runSchedulerTests(appGateway, chains.evmxChain);
+  await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
 }

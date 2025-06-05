@@ -1,8 +1,9 @@
 import { parseAbi, type Address, type Hash } from 'viem';
 import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
+import { selectRandomChains } from '../utils/helpers.js';
 import { ChainConfig } from '../utils/types.js';
-import { COLORS, CHAIN_IDS, AMOUNTS } from '../utils/constants.js';
+import { COLORS, AMOUNTS } from '../utils/constants.js';
 
 // Insufficient fees tests
 export async function runInsufficientFeesTests(
@@ -104,15 +105,19 @@ export async function runInsufficientFeesTests(
 }
 
 export async function executeInsufficientFeesTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Insufficient fees Tests ===${COLORS.NC}`);
 
-  const appGateway = await deployAppGateway('ReadAppGateway', evmxChain, 0n);
+  const appGateway = await deployAppGateway('ReadAppGateway', chains.evmxChain, 0n);
 
-  await depositFunds(appGateway, arbChain, evmxChain);
-  await deployOnchain(CHAIN_IDS.OP_SEP, appGateway, evmxChain);
-  await runInsufficientFeesTests('multichain', CHAIN_IDS.OP_SEP, appGateway, evmxChain);
-  await withdrawFunds(appGateway, arbChain, evmxChain);
+  await depositFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+
+  // Select one random chain for insufficient fees tests
+  const randomChains = selectRandomChains(chains, 1);
+  const selectedChain = randomChains[0];
+
+  await deployOnchain(selectedChain.chainId, appGateway, chains.evmxChain);
+  await runInsufficientFeesTests('multichain', selectedChain.chainId, appGateway, chains.evmxChain);
+  await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
 }

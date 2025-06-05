@@ -1,22 +1,22 @@
 import { parseAbi, type Address } from 'viem';
 import { deployAppGateway, deployContract, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
-import { awaitEvents } from '../utils/helpers.js';
+import { awaitEvents, selectRandomChains } from '../utils/helpers.js';
 import { ChainConfig } from '../utils/types.js';
-import { COLORS, CHAIN_IDS } from '../utils/constants.js';
+import { COLORS } from '../utils/constants.js';
 
 // Upload to EVMx tests
 export async function runUploadTests(
   fileName: string,
   appGateway: Address,
   evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  selectedChain: ChainConfig
 ): Promise<void> {
-  // Deploy counter contract on Arbitrum Sepolia
-  const counterAddress = await deployContract(fileName, [], arbChain);
+  // Deploy counter contract on selected chain
+  const counterAddress = await deployContract(fileName, [], selectedChain);
 
-  // Increment counter on Arbitrum Sepolia
-  console.log(`${COLORS.CYAN}Increment counter on Arbitrum Sepolia${COLORS.NC}`);
+  // Increment counter on selected chain
+  console.log(`${COLORS.CYAN}Increment counter on ${selectedChain.chainId}${COLORS.NC}`);
   const counterAbi = parseAbi([
     'function increment() external'
   ]);
@@ -25,7 +25,7 @@ export async function runUploadTests(
     counterAddress,
     'increment',
     [],
-    arbChain,
+    selectedChain,
     counterAbi
   );
 
@@ -39,7 +39,7 @@ export async function runUploadTests(
   await sendTransaction(
     appGateway,
     'uploadToEVMx',
-    [counterAddress, CHAIN_IDS.ARB_SEP],
+    [counterAddress, selectedChain.chainId],
     evmxChain,
     uploadAbi
   );
@@ -58,14 +58,18 @@ export async function runUploadTests(
 }
 
 export async function executeUploadTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Upload to EVMx Tests ===${COLORS.NC}`);
 
-  const appGateway = await deployAppGateway('UploadAppGateway', evmxChain);
+  const appGateway = await deployAppGateway('UploadAppGateway', chains.evmxChain);
 
-  await depositFunds(appGateway, arbChain, evmxChain);
-  await runUploadTests("Counter", appGateway, evmxChain, arbChain);
-  await withdrawFunds(appGateway, arbChain, evmxChain);
+  await depositFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+
+  // Select one random chain for upload tests
+  const randomChains = selectRandomChains(chains, 1);
+  const selectedChain = randomChains[0];
+
+  await runUploadTests("Counter", appGateway, chains.evmxChain, selectedChain);
+  await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
 }

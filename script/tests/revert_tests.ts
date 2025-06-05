@@ -1,14 +1,15 @@
 import { parseAbi, type Address } from 'viem';
 import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
-import { fetchForwarderAndOnchainAddress, getTxDetails } from '../utils/helpers.js';
+import { fetchForwarderAndOnchainAddress, getTxDetails, selectRandomChains } from '../utils/helpers.js';
 import { ContractAddresses, ChainConfig } from '../utils/types.js';
-import { COLORS, CHAIN_IDS, URLS } from '../utils/constants.js';
+import { COLORS, URLS } from '../utils/constants.js';
 
 // Revert tests
 export async function runRevertTests(
   addresses: ContractAddresses,
-  evmxChain: ChainConfig
+  evmxChain: ChainConfig,
+  randomChainId: number
 ): Promise<void> {
   const interval = 1000; // 1 seconds
   const maxAttempts = 60; // 60 seconds
@@ -30,7 +31,7 @@ export async function runRevertTests(
   const hash1 = await sendTransaction(
     addresses.appGateway,
     'testOnChainRevert',
-    [CHAIN_IDS.OP_SEP],
+    [randomChainId],
     evmxChain,
     abi
   );
@@ -71,7 +72,7 @@ export async function runRevertTests(
   const hash2 = await sendTransaction(
     addresses.appGateway,
     'testCallbackRevertWrongInputArgs',
-    [CHAIN_IDS.OP_SEP],
+    [randomChainId],
     evmxChain,
     abi
   );
@@ -104,22 +105,26 @@ export async function runRevertTests(
 }
 
 export async function executeRevertTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Revert Tests ===${COLORS.NC}`);
 
   const addresses: ContractAddresses = {
-    appGateway: await deployAppGateway('RevertAppGateway', evmxChain)
+    appGateway: await deployAppGateway('RevertAppGateway', chains.evmxChain)
   };
 
-  await depositFunds(addresses.appGateway, arbChain, evmxChain);
-  await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  await depositFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 
-  const chain2Addresses = await fetchForwarderAndOnchainAddress('counter', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
-  addresses.chain2Forwarder = chain2Addresses.forwarder;
-  addresses.chain2Onchain = chain2Addresses.onchain;
+  // Select one random chain for revert tests
+  const randomChains = selectRandomChains(chains, 1);
+  const selectedChain = randomChains[0];
 
-  await runRevertTests(addresses, evmxChain);
-  await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
+  await deployOnchain(selectedChain.chainId, addresses.appGateway, chains.evmxChain);
+
+  const chainAddresses = await fetchForwarderAndOnchainAddress('counter', selectedChain.chainId, addresses.appGateway, chains.evmxChain);
+  addresses.chain2Forwarder = chainAddresses.forwarder;
+  addresses.chain2Onchain = chainAddresses.onchain;
+
+  await runRevertTests(addresses, chains.evmxChain, selectedChain.chainId);
+  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 }
