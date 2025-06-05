@@ -1,4 +1,4 @@
-import { parseAbi, type Address } from 'viem';
+import { parseAbi } from 'viem';
 import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
 import { fetchForwarderAndOnchainAddress, selectRandomChains } from '../utils/helpers.js';

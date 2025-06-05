@@ -1,7 +1,7 @@
 // fees/manager.ts
-import { parseAbi, formatEther, type Address, parseEther } from 'viem';
+import { parseAbi, formatEther, type Address } from 'viem';
 import { ChainConfig } from './types.js';
-import { COLORS, AMOUNTS, CHAIN_IDS } from './constants.js';
+import { COLORS, AMOUNTS } from './constants.js';
 import { sendTransaction } from './deployer.js';
 
 // Check available fees
