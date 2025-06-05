@@ -27,6 +27,7 @@ export async function checkAvailableFees(
       }) as bigint;
 
       if (availableFees > 0n) {
+        process.stdout.write('\r\x1b[2K');
         console.log(`Funds available: ${formatEther(availableFees)} Credits - ${availableFees} wei`);
         await new Promise(resolve => setTimeout(resolve, 1000));
         return availableFees;
