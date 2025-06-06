@@ -11,6 +11,7 @@ import { executeUploadTests } from './tests/upload_tests.js';
 import { executeSchedulerTests } from './tests/scheduler_tests.js';
 import { executeInsufficientFeesTests } from './tests/insufficient_tests.js';
 import { executeRevertTests } from './tests/revert_tests.js';
+import { executeDeployTests } from './tests/deploy_tests.js';
 
 // Help function
 function showHelp(): void {
@@ -38,6 +39,7 @@ function parseFlags(args: string[]): TestFlags {
     scheduler: args.includes('-s') || args.includes('-a'),
     insufficient: args.includes('-i') || args.includes('-a'),
     revert: args.includes('-v') || args.includes('-a'),
+    deployment: args.includes('-d') || args.includes('-a'),
     all: args.includes('-a')
   };
 }
@@ -84,6 +86,10 @@ async function main(): Promise<void> {
 
     if (flags.revert) {
       await executeRevertTests(chains);
+    }
+
+    if (flags.deployment) {
+      await executeDeployTests(chains);
     }
 
     console.log(`${COLORS.GREEN}All selected tests completed successfully!${COLORS.NC}`);

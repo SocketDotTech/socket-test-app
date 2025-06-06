@@ -14,6 +14,8 @@ export interface ContractAddresses {
   chain1Onchain?: Address;
   chain2Forwarder?: Address;
   chain2Onchain?: Address;
+  deployForwarders?: Address[];
+  deployOnchain?: Address[];
 }
 
 export interface TestFlags {
@@ -24,5 +26,6 @@ export interface TestFlags {
   scheduler: boolean;
   insufficient: boolean;
   revert: boolean;
+  deployment: boolean;
   all: boolean;
 }

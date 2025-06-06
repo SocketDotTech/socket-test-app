@@ -19,6 +19,7 @@
     "upload": "tsx script/runIntegrationTests.ts -u",
     "scheduler": "tsx script/runIntegrationTests.ts -s",
     "insufficient": "tsx script/runIntegrationTests.ts -i",
-    "revert": "tsx script/runIntegrationTests.ts -v"
+    "revert": "tsx script/runIntegrationTests.ts -v",
+    "deployment": "tsx script/runIntegrationTests.ts -d"
   }
 }
