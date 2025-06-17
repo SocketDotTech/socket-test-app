@@ -8,7 +8,8 @@ import { COLORS } from '../utils/constants.js';
 // Write tests
 export async function runWriteTests(
   addresses: ContractAddresses,
-  evmxChain: ChainConfig
+  evmxChain: ChainConfig,
+  randomChains: ChainConfig[]
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Running all write tests functions...${COLORS.NC}`);
 
@@ -19,7 +20,7 @@ export async function runWriteTests(
     'function triggerAltWrite(address forwarder1, address forwarder2) external'
   ]);
 
-  if (!addresses.appGateway || !addresses.chain2Forwarder || !addresses.chain1Forwarder) {
+  if (!addresses.appGateway || !addresses.chain2Forwarder || !addresses.chain2Onchain || !addresses.chain1Forwarder || !addresses.chain1Onchain) {
     throw new Error('Required addresses not found');
   }
 
@@ -38,7 +39,10 @@ export async function runWriteTests(
     evmxChain,
     abi
   );
-  await awaitEvents(numberOfRequests, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await Promise.all([
+    awaitEvents(numberOfRequests, 'CounterIncreasedTo(uint256)', addresses.chain2Onchain, randomChains[1]),
+    awaitEvents(numberOfRequests, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain),
+  ]);
 
   // 2. Trigger Parallel Write
   await sendTransaction(
@@ -48,7 +52,10 @@ export async function runWriteTests(
     evmxChain,
     abi
   );
-  await awaitEvents(numberOfRequests * 2n, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await Promise.all([
+    awaitEvents(numberOfRequests, 'CounterIncreasedTo(uint256)', addresses.chain1Onchain, randomChains[0]),
+    awaitEvents(numberOfRequests, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain),
+  ]);
 
   // 3. Trigger Alternating Write
   await sendTransaction(
@@ -58,7 +65,11 @@ export async function runWriteTests(
     evmxChain,
     abi
   );
-  await awaitEvents(numberOfRequests * 3n, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await Promise.all([
+    awaitEvents(numberOfRequests / 2n, 'CounterIncreasedTo(uint256)', addresses.chain1Onchain, randomChains[0]),
+    awaitEvents(numberOfRequests / 2n, 'CounterIncreasedTo(uint256)', addresses.chain2Onchain, randomChains[1]),
+    awaitEvents(numberOfRequests, 'CounterIncreased(address,uint256,uint256)', addresses.appGateway, evmxChain),
+  ])
 }
 
 export async function executeWriteTests(
