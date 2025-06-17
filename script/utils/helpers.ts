@@ -150,14 +150,13 @@ export function selectRandomChains(
   count: number
 ): ChainConfig[] {
   const { evmxChain, ...rest } = chains;
-
   const available = Object.values(rest);
-  const selected: ChainConfig[] = [];
 
-  for (let i = 0; i < Math.min(count, available.length); i++) {
-    const randomIndex = Math.floor(Math.random() * available.length);
-    selected.push(available.splice(randomIndex, 1)[0]);
+  // Shuffle array using Fisher-Yates algorithm
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
   }
 
-  return selected;
+  return available.slice(0, count);
 }
