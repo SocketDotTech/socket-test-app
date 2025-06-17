@@ -86,17 +86,19 @@ export async function executeWriteTests(
   // Selects two random chains out of the available ones
   const randomChains = selectRandomChains(chains, 2);
 
-  await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
-
-  const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.chain1Forwarder = chain1Addresses.forwarder;
-  addresses.chain1Onchain = chain1Addresses.onchain;
-
-  const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.chain2Forwarder = chain2Addresses.forwarder;
-  addresses.chain2Onchain = chain2Addresses.onchain;
-
-  await runWriteTests(addresses, chains.evmxChain);
-  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+  try {
+    await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+    const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain1Forwarder = chain1Addresses.forwarder;
+    addresses.chain1Onchain = chain1Addresses.onchain;
+    const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain2Forwarder = chain2Addresses.forwarder;
+    addresses.chain2Onchain = chain2Addresses.onchain;
+    await runWriteTests(addresses, chains.evmxChain, randomChains);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }
