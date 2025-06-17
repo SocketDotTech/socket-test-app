@@ -88,40 +88,43 @@ export async function fetchForwarderAndOnchainAddress(
 export async function awaitEvents(
   expectedNewEvents: bigint,
   _eventSignature: string,
-  appGateway: Address,
-  evmxChain: ChainConfig,
+  contract: Address,
+  chain: ChainConfig,
   timeout: number = 300
 ): Promise<void> {
   console.log(`${COLORS.CYAN}Waiting logs for ${expectedNewEvents} new events (up to ${timeout} seconds)...${COLORS.NC}`);
-
-  const interval: number = 2000; // 2 seconds
-  let elapsed: number = 0;
+  const interval: number = 1000; // 1 seconds
+  const startTimestamp = Date.now();
+  const timeoutMs = timeout * 1000;
   let eventCount = 0n;
+  let previousEventCount = 0n;
 
-  while (elapsed <= timeout * 1000) {
+  const blockNumber = await chain.client.getBlockNumber();
+  while (Date.now() <= startTimestamp + timeoutMs) {
     try {
-      const logs = await evmxChain.client.getLogs({
-        address: appGateway,
-        fromBlock: 'earliest',
+      const logs = await chain.client.getLogs({
+        address: contract,
+        fromBlock: blockNumber,
         toBlock: 'latest'
       });
+      eventCount = BigInt(logs.length);
 
-      eventCount = logs.length;
+      // Check if we have new events and log them with timestamp
+      if (eventCount > previousEventCount) {
+        const newEventsFound = eventCount - previousEventCount;
+        const timestamp = new Date().toISOString();
+        console.log(`${timestamp} Found ${newEventsFound} new event(s) for ${_eventSignature} on ${chain.chainId}: ${eventCount}/${expectedNewEvents} events.`);
+        previousEventCount = eventCount;
+      }
 
       if (eventCount >= expectedNewEvents) {
-        process.stdout.write(`\r`);
-        console.log(`\nTotal events on EVMx: ${eventCount} reached (expected ${expectedNewEvents})`);
         break;
       }
 
-      process.stdout.write(`\rWaiting for ${expectedNewEvents} logs on EVMx: ${eventCount}/${expectedNewEvents} (Elapsed: ${elapsed / 1000}/${timeout} sec)`);
-
       await new Promise(resolve => setTimeout(resolve, interval));
-      elapsed += interval;
     } catch (error) {
       console.error('Error fetching logs:', error);
       await new Promise(resolve => setTimeout(resolve, interval));
-      elapsed += interval;
     }
   }
 
