@@ -46,7 +46,7 @@ export async function runReadTests(
     evmxChain,
     abi
   );
-  await awaitEvents(numberOfRequests * 2n, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
 }
 
 export async function executeReadTests(
@@ -63,17 +63,20 @@ export async function executeReadTests(
   // Selects two random chains out of the available ones
   const randomChains = selectRandomChains(chains, 2);
 
-  await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+  try {
+    await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
 
-  const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.chain1Forwarder = chain1Addresses.forwarder;
-  addresses.chain1Onchain = chain1Addresses.onchain;
+    const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain1Forwarder = chain1Addresses.forwarder;
+    addresses.chain1Onchain = chain1Addresses.onchain;
 
-  const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.chain2Forwarder = chain2Addresses.forwarder;
-  addresses.chain2Onchain = chain2Addresses.onchain;
+    const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain2Forwarder = chain2Addresses.forwarder;
+    addresses.chain2Onchain = chain2Addresses.onchain;
 
-  await runReadTests(addresses, chains.evmxChain);
-  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+    await runReadTests(addresses, chains.evmxChain);
+  } finally {
+    await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }

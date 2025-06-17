@@ -96,8 +96,6 @@ export async function executeWriteTests(
     addresses.chain2Forwarder = chain2Addresses.forwarder;
     addresses.chain2Onchain = chain2Addresses.onchain;
     await runWriteTests(addresses, chains.evmxChain, randomChains);
-  } catch (error) {
-    console.error(error);
   } finally {
     await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
   }
