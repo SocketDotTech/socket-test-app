@@ -119,12 +119,15 @@ export async function executeRevertTests(
   const randomChains = selectRandomChains(chains, 1);
   const selectedChain = randomChains[0];
 
-  await deployOnchain(selectedChain.chainId, addresses.appGateway, chains.evmxChain);
+  try {
+    await deployOnchain(selectedChain.chainId, addresses.appGateway, chains.evmxChain);
 
-  const chainAddresses = await fetchForwarderAndOnchainAddress('counter', selectedChain.chainId, addresses.appGateway, chains.evmxChain);
-  addresses.chain2Forwarder = chainAddresses.forwarder;
-  addresses.chain2Onchain = chainAddresses.onchain;
+    const chainAddresses = await fetchForwarderAndOnchainAddress('counter', selectedChain.chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain2Forwarder = chainAddresses.forwarder;
+    addresses.chain2Onchain = chainAddresses.onchain;
 
-  await runRevertTests(addresses, chains.evmxChain, selectedChain.chainId);
-  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+    await runRevertTests(addresses, chains.evmxChain, selectedChain.chainId);
+  } finally {
+    await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }

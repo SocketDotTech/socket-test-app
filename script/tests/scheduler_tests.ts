@@ -85,6 +85,9 @@ export async function executeSchedulerTests(
   const appGateway = await deployAppGateway('ScheduleAppGateway', chains.evmxChain);
 
   await depositFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
-  await runSchedulerTests(appGateway, chains.evmxChain);
-  await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  try {
+    await runSchedulerTests(appGateway, chains.evmxChain);
+  } finally {
+    await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }

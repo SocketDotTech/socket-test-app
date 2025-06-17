@@ -70,6 +70,9 @@ export async function executeUploadTests(
   const randomChains = selectRandomChains(chains, 1);
   const selectedChain = randomChains[0];
 
-  await runUploadTests("Counter", appGateway, chains.evmxChain, selectedChain);
-  await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  try {
+    await runUploadTests("Counter", appGateway, chains.evmxChain, selectedChain);
+  } finally {
+    await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }

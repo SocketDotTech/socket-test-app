@@ -117,7 +117,10 @@ export async function executeInsufficientFeesTests(
   const randomChains = selectRandomChains(chains, 1);
   const selectedChain = randomChains[0];
 
-  await deployOnchain(selectedChain.chainId, appGateway, chains.evmxChain);
-  await runInsufficientFeesTests('multichain', selectedChain.chainId, appGateway, chains.evmxChain);
-  await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  try {
+    await deployOnchain(selectedChain.chainId, appGateway, chains.evmxChain);
+    await runInsufficientFeesTests('multichain', selectedChain.chainId, appGateway, chains.evmxChain);
+  } finally {
+    await withdrawFunds(appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }

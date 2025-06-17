@@ -81,32 +81,35 @@ export async function executeDeployTests(
   // Selects two random chains out of the available ones
   const randomChains = selectRandomChains(chains, 1);
 
-  await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+  try {
+    await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
 
-  let chainAddresses = await fetchForwarderAndOnchainAddress('noPlugNoInititialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.deployForwarders!.push(chainAddresses.forwarder);
-  addresses.deployOnchain!.push(chainAddresses.onchain);
+    let chainAddresses = await fetchForwarderAndOnchainAddress('noPlugNoInititialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.deployForwarders!.push(chainAddresses.forwarder);
+    addresses.deployOnchain!.push(chainAddresses.onchain);
 
-  chainAddresses = await fetchForwarderAndOnchainAddress('noPlugInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.deployForwarders!.push(chainAddresses.forwarder);
-  addresses.deployOnchain!.push(chainAddresses.onchain);
+    chainAddresses = await fetchForwarderAndOnchainAddress('noPlugInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.deployForwarders!.push(chainAddresses.forwarder);
+    addresses.deployOnchain!.push(chainAddresses.onchain);
 
-  chainAddresses = await fetchForwarderAndOnchainAddress('plugNoInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.deployForwarders!.push(chainAddresses.forwarder);
-  addresses.deployOnchain!.push(chainAddresses.onchain);
+    chainAddresses = await fetchForwarderAndOnchainAddress('plugNoInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.deployForwarders!.push(chainAddresses.forwarder);
+    addresses.deployOnchain!.push(chainAddresses.onchain);
 
-  chainAddresses = await fetchForwarderAndOnchainAddress('plugInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.deployForwarders!.push(chainAddresses.forwarder);
-  addresses.deployOnchain!.push(chainAddresses.onchain);
+    chainAddresses = await fetchForwarderAndOnchainAddress('plugInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.deployForwarders!.push(chainAddresses.forwarder);
+    addresses.deployOnchain!.push(chainAddresses.onchain);
 
-  chainAddresses = await fetchForwarderAndOnchainAddress('plugInitializeTwice', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.deployForwarders!.push(chainAddresses.forwarder);
-  addresses.deployOnchain!.push(chainAddresses.onchain);
+    chainAddresses = await fetchForwarderAndOnchainAddress('plugInitializeTwice', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.deployForwarders!.push(chainAddresses.forwarder);
+    addresses.deployOnchain!.push(chainAddresses.onchain);
 
-  chainAddresses = await fetchForwarderAndOnchainAddress('plugNoInitInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
-  addresses.deployForwarders!.push(chainAddresses.forwarder);
-  addresses.deployOnchain!.push(chainAddresses.onchain);
+    chainAddresses = await fetchForwarderAndOnchainAddress('plugNoInitInitialize', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.deployForwarders!.push(chainAddresses.forwarder);
+    addresses.deployOnchain!.push(chainAddresses.onchain);
 
-  await runDeployAppGatewayTests(addresses, chains.evmxChain, randomChains);
-  await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+    await runDeployAppGatewayTests(addresses, chains.evmxChain, randomChains);
+  } finally {
+    await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }
