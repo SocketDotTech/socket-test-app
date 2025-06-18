@@ -91,8 +91,9 @@ export async function sendTransaction(
       value: value
     });
 
+    const timestamp = new Date().toISOString();
     await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log(`${COLORS.GREEN}Tx Hash:${COLORS.NC} ${getExplorerUrl(hash, chainConfig)}`);
+    console.log(`${timestamp} ${COLORS.GREEN}Tx Hash:${COLORS.NC} ${getExplorerUrl(hash, chainConfig)}`);
 
     return hash;
   } catch (error) {

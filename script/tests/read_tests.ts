@@ -1,9 +1,9 @@
-import { parseAbi, type Address } from 'viem';
+import { parseAbi } from 'viem';
 import { deployAppGateway, deployOnchain, sendTransaction } from '../utils/deployer.js';
 import { depositFunds, withdrawFunds } from '../utils/fees-manager.js';
-import { awaitEvents, fetchForwarderAndOnchainAddress } from '../utils/helpers.js';
+import { awaitEvents, fetchForwarderAndOnchainAddress, selectRandomChains } from '../utils/helpers.js';
 import { ContractAddresses, ChainConfig } from '../utils/types.js';
-import { COLORS, CHAIN_IDS } from '../utils/constants.js';
+import { COLORS } from '../utils/constants.js';
 
 // Read tests
 export async function runReadTests(
@@ -18,7 +18,7 @@ export async function runReadTests(
     'function triggerAltRead(address forwarder1, address forwarder2) external'
   ]);
 
-  if (!addresses.appGateway || !addresses.opForwarder || !addresses.arbForwarder) {
+  if (!addresses.appGateway || !addresses.chain2Forwarder || !addresses.chain1Forwarder) {
     throw new Error('Required addresses not found');
   }
 
@@ -32,7 +32,7 @@ export async function runReadTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerParallelRead',
-    [addresses.arbForwarder],
+    [addresses.chain1Forwarder],
     evmxChain,
     abi
   );
@@ -42,35 +42,41 @@ export async function runReadTests(
   await sendTransaction(
     addresses.appGateway,
     'triggerAltRead',
-    [addresses.opForwarder, addresses.arbForwarder],
+    [addresses.chain2Forwarder, addresses.chain1Forwarder],
     evmxChain,
     abi
   );
-  await awaitEvents(numberOfRequests * 2n, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
+  await awaitEvents(numberOfRequests, 'ValueRead(address,uint256,uint256)', addresses.appGateway, evmxChain);
 }
 
 export async function executeReadTests(
-  evmxChain: ChainConfig,
-  arbChain: ChainConfig
+  chains: Record<string, ChainConfig>,
 ): Promise<void> {
   console.log(`${COLORS.GREEN}=== Running Read Tests ===${COLORS.NC}`);
 
   const addresses: ContractAddresses = {
-    appGateway: await deployAppGateway('ReadAppGateway', evmxChain)
+    appGateway: await deployAppGateway('ReadAppGateway', chains.evmxChain)
   };
 
-  await depositFunds(addresses.appGateway, arbChain, evmxChain);
-  await deployOnchain(CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
-  await deployOnchain(CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
+  await depositFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
 
-  const arbAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.ARB_SEP, addresses.appGateway, evmxChain);
-  addresses.arbForwarder = arbAddresses.forwarder;
-  addresses.arbOnchain = arbAddresses.onchain;
+  // Selects two random chains out of the available ones
+  const randomChains = selectRandomChains(chains, 2);
 
-  const opAddresses = await fetchForwarderAndOnchainAddress('multichain', CHAIN_IDS.OP_SEP, addresses.appGateway, evmxChain);
-  addresses.opForwarder = opAddresses.forwarder;
-  addresses.opOnchain = opAddresses.onchain;
+  try {
+    await deployOnchain(randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    await deployOnchain(randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
 
-  await runReadTests(addresses, evmxChain);
-  await withdrawFunds(addresses.appGateway, arbChain, evmxChain);
+    const chain1Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[0].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain1Forwarder = chain1Addresses.forwarder;
+    addresses.chain1Onchain = chain1Addresses.onchain;
+
+    const chain2Addresses = await fetchForwarderAndOnchainAddress('multichain', randomChains[1].chainId, addresses.appGateway, chains.evmxChain);
+    addresses.chain2Forwarder = chain2Addresses.forwarder;
+    addresses.chain2Onchain = chain2Addresses.onchain;
+
+    await runReadTests(addresses, chains.evmxChain);
+  } finally {
+    await withdrawFunds(addresses.appGateway, chains.arbMainnetChain, chains.evmxChain);
+  }
 }

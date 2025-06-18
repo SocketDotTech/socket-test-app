@@ -10,10 +10,12 @@ export interface ChainConfig {
 
 export interface ContractAddresses {
   appGateway: Address;
-  arbForwarder?: Address;
-  arbOnchain?: Address;
-  opForwarder?: Address;
-  opOnchain?: Address;
+  chain1Forwarder?: Address;
+  chain1Onchain?: Address;
+  chain2Forwarder?: Address;
+  chain2Onchain?: Address;
+  deployForwarders?: Address[];
+  deployOnchain?: Address[];
 }
 
 export interface TestFlags {
@@ -24,5 +26,6 @@ export interface TestFlags {
   scheduler: boolean;
   insufficient: boolean;
   revert: boolean;
+  deployment: boolean;
   all: boolean;
 }

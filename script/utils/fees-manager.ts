@@ -1,7 +1,7 @@
 // fees/manager.ts
-import { parseAbi, formatEther, type Address, parseEther } from 'viem';
+import { parseAbi, formatEther, type Address } from 'viem';
 import { ChainConfig } from './types.js';
-import { COLORS, AMOUNTS, CHAIN_IDS } from './constants.js';
+import { COLORS, AMOUNTS } from './constants.js';
 import { sendTransaction } from './deployer.js';
 
 // Check available fees
@@ -27,6 +27,7 @@ export async function checkAvailableFees(
       }) as bigint;
 
       if (availableFees > 0n) {
+        process.stdout.write('\r\x1b[2K');
         console.log(`Funds available: ${formatEther(availableFees)} Credits - ${availableFees} wei`);
         await new Promise(resolve => setTimeout(resolve, 1000));
         return availableFees;
